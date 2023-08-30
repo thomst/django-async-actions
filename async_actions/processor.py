@@ -12,12 +12,12 @@ def import_content_type_cls():
         setattr(sys.modules[__name__], 'ContentType', getattr(ct_module, 'ContentType'))
     return getattr(sys.modules[__name__], 'ContentType')
 
+
 class AsyncContext(dict):
     """
-    Every action task takes a context object as first argument. A context has
-    a dict representation that allows it to be serialized.
-
-    :return _type_: _description_
+    An AsyncContext is a dict type that handles specific dict items to be
+    serializable. Every :class:`~.task.ActionTask` takes a AsyncContext object
+    as its first and only argument.
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
@@ -44,7 +44,8 @@ class AsyncContext(dict):
     @property
     def data(self):
         """
-        _summary_
+        Just a representation of self to have a consistent api along with the
+        extra properties.
         """
         return self
 
