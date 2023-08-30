@@ -2,7 +2,7 @@ import time
 from celery.result import AsyncResult
 from item_messages import add_message, ERROR
 from .messages import add_task_message
-from .processors import Processor
+from .processor import Processor
 
 
 class BaseTaskAction:
@@ -32,7 +32,7 @@ class BaseTaskAction:
         processor = self.processor_cls(queryset, self.task, runtime_data)
         processor.run()
         for sig in processor.signatures:
-            obj = [o for o in processor.objects if o.pk == sig.args[0][1]][0]
+            obj = sig.args[0].obj
             add_task_message(request, obj, sig)
 
         for obj in processor.locked_objects:
