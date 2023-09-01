@@ -1,53 +1,6 @@
 
-import sys
-import importlib
 from celery import group
-
-
-# We need to import ContentType dynamically because on celery app initialization
-# the django apps are not yet loaded.
-def import_content_type_cls():
-    if not hasattr(sys.modules[__name__], 'ContentType'):
-        ct_module = importlib.import_module('django.contrib.contenttypes.models')
-        setattr(sys.modules[__name__], 'ContentType', getattr(ct_module, 'ContentType'))
-    return getattr(sys.modules[__name__], 'ContentType')
-
-
-class AsyncContext(dict):
-    """
-    An AsyncContext is a dict type that handles specific dict items to be
-    serializable. Every :class:`~.task.ActionTask` takes a AsyncContext object
-    as its first and only argument.
-    """
-    def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
-
-        # Make sure obj item is serializeable.
-        self._obj = None
-        if 'obj' in self.data and not isinstance(self.data['obj'], (tuple, list)):
-            obj = self.get('obj')
-            ContentType = import_content_type_cls()
-            ct_id = ContentType.objects.get_for_model(type(obj)).id
-            self.data['obj'] = (ct_id, obj.pk)
-
-    @property
-    def obj(self):
-        """
-        Resolve the content-type-id and object-id into a real object.
-        """
-        if 'obj' in self.data and not self._obj:
-            ContentType = import_content_type_cls()
-            ct = ContentType.objects.get_for_id(self.data['obj'][0])
-            self._obj = ct.get_object_for_this_type(pk=self.data['obj'][1])
-        return self._obj
-
-    @property
-    def data(self):
-        """
-        Just a representation of self to have a consistent api along with the
-        extra properties.
-        """
-        return self
+from .utils import import_content_type_cls
 
 
 class Processor:
@@ -72,10 +25,6 @@ class Processor:
         :meth:`.sessions.BaseSession.run` method of each session
     :type runtime_data: any serialize able object, probably a dict
     """
-
-    #: Class used as context when initiating the tasks signature.
-    ASYNC_CONTEXT_CLS = AsyncContext
-
     def __init__(self, queryset, task, runtime_data=None):
         self._queryset = queryset
         self.task = task
@@ -95,7 +44,7 @@ class Processor:
         """
         _summary_
         """
-        return self.ASYNC_CONTEXT_CLS(obj=obj, runtime_data=self.runtime_data)
+        return self.task.ASYNC_CONTEXT_CLS(obj=obj, runtime_data=self.runtime_data)
 
     def _get_signature(self, obj):
         """
