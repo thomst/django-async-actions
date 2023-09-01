@@ -32,7 +32,6 @@ def add_messages(modeladmin, request, queryset):
 
 
 def run_test_task(modeladmin, request, queryset):
-    results = dict()
     signatures = list()
     for obj in queryset.all():
         ct = ContentType.objects.get_for_model(type(obj))
