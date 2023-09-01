@@ -42,7 +42,6 @@ class BaseTaskAction:
         time.sleep(3)
         for result in processor.results:
             result = AsyncResult(result.task_id)
-            print(result.result)
             add_task_message(request, obj, result)
 
     def __call__(self, modeladmin, request, queryset):
