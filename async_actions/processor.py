@@ -1,6 +1,7 @@
 
 from celery import group
-from .utils import import_content_type_cls
+from .models import ObjectTaskState
+from .utils import import_content_type
 
 
 class Processor:
@@ -38,7 +39,15 @@ class Processor:
         """
         Try to get a lock for the object.
         """
-        return True
+        ContentType = import_content_type()
+        content_type = ContentType.objects.get_for_model(type(obj))
+        _, lock = ObjectTaskState.objects.get_or_create(
+            content_type=content_type,
+            object_id=obj.pk,
+            active=True,
+            defaults=dict(task_id=task_id)
+        )
+        return lock
 
     def _get_context(self, obj):
         """

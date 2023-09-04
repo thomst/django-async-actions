@@ -1,0 +1,14 @@
+{% autoescape on %}
+    <span class="actiontask {{result.state}}" id="{{result.task_id}}" data-hash="{{result_hash}}">
+        <p>id: {{result.task_id}}</p>
+        <p>name: {{result.info.task_name}}</p>
+        <p>state: {{result.state}}</p>
+        {% if result.info.notes %}
+            <ul>
+                {% for note in result.info.notes%}
+                    <li class="note.level">note.content</li>
+                {% endfor %}
+            </ul>
+        {% endif %}
+    </span>
+{% endautoescape %}

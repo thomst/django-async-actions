@@ -1,7 +1,5 @@
-import time
-from celery.result import AsyncResult
 from item_messages import add_message, ERROR
-from .messages import add_task_message
+from .messages import set_task_message
 from .processor import Processor
 
 
@@ -33,16 +31,11 @@ class BaseTaskAction:
         processor.run()
         for sig in processor.signatures:
             obj = sig.args[0].obj
-            add_task_message(request, obj, sig)
+            set_task_message(request, obj, sig)
 
         for obj in processor.locked_objects:
             msg = 'There is already a running action task for this object.'
             add_message(request, ERROR, obj, msg)
-
-        time.sleep(3)
-        for result in processor.results:
-            result = AsyncResult(result.task_id)
-            add_task_message(request, obj, result)
 
     def __call__(self, modeladmin, request, queryset):
         """
