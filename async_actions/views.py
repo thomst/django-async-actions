@@ -26,10 +26,6 @@ def tasks_by_ids(request):
         # FIXME: Is there a way to bulk-load results for better perfomance?
         result = AsyncResult(task_state.task_id)
 
-        # PENDING results won't be updated.
-        if result.status == states.PENDING:
-            continue
-
         # If the checksum hasn't changed we skip the result.
         if str(get_result_hash(result)) == str(tasks[result.task_id]):
             continue
