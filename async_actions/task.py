@@ -12,15 +12,24 @@ class AsyncContext(dict):
     """
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        self._obj = None
+        self._task = None
 
         # Resolve object into serializable tuple of content_type_id and
         # object_id.
-        self._obj = None
         if 'obj' in self.data and not isinstance(self.data['obj'], (tuple, list)):
             obj = self.get('obj')
             ContentType = import_content_type()
             ct_id = ContentType.objects.get_for_model(type(obj)).id
             self.data['obj'] = (ct_id, obj.pk)
+
+    @property
+    def task(self):
+        return self._task
+
+    @task.setter
+    def task(self, task):
+        self._task = task
 
     @property
     def obj(self):
@@ -45,6 +54,11 @@ class AsyncContext(dict):
         """
         return self
 
+    def add_note(self, note, level='info'):
+        notes = self.data.get('notes', list())
+        notes.append(dict(content=note, level=level))
+        self.data['notes'] = notes
+        self.task.store_context(self)
 
 
 # FIXME: Is it safe to use self???
@@ -75,45 +89,29 @@ class ActionTask(Task):
         state.active = False
         state.save(update_fields=('active',))
 
-    def add_note(self, note, level='info'):
-        notes = self.context.get('notes', list())
-        notes.append(dict(content=note, level=level))
-        self.context['notes'] = notes
-        self.store_context()
-
-    def store_context(self):
+    def store_context(self, context):
         state = self.backend.get_state(self.request.id)
-        self.update_state(state=state, meta=self.context)
-
-    @property
-    def context(self):
-        """
-        _summary_
-        """
-        return self._context
-
-    @property
-    def c(self):
-        """
-        _summary_
-        """
-        return self._context
+        self.update_state(state=state, meta=context)
 
     def _init_context(self, context):
-        # Add task name to context to have it at hand in our AsyncResults.
-        context['task_name'] = self.name
-        if isinstance(context, self.ASYNC_CONTEXT_CLS):
-            self._context = context
-        else:
-            self._context = self.ASYNC_CONTEXT_CLS(**context)
+        # Init AsyncContext.
+        if not isinstance(context, self.ASYNC_CONTEXT_CLS):
+            context = self.ASYNC_CONTEXT_CLS(**context)
 
-    # FIXME: Better not using self.context since we already have the context arg.
+        # Add task name to context to have it at hand in our AsyncResults.
+        context.data['task_name'] = self.name
+
+        # Set task as context attribute - which won't be serialized.
+        context.task = self
+
+        return context
+
     def __call__(self, context, *args, **kwargs):
         """
         If called with a tuple of a content_type id and object id as first
         argument we do a lookup and pass the "real" object to the super method.
         This
         """
-        self._init_context(context)
-        self.context['task_result'] = super().__call__(self.context, *args, **kwargs)
-        return self.context
+        context = self._init_context(context)
+        context.data['task_result'] = super().__call__(context, *args, **kwargs)
+        return context
