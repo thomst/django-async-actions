@@ -80,6 +80,7 @@ class ActionTask(Task):
         Get object to work with.
         """
 
+    # FIXME: Method seems to not be called when tasks failed.
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
         """
         Release object lock.
