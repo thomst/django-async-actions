@@ -23,6 +23,7 @@ def tasks_by_ids(request):
     for task_state in task_states:
 
         # Get result by task-id.
+        # FIXME: Is there a way to bulk-load results for better perfomance?
         result = AsyncResult(task_state.task_id)
 
         # PENDING results won't be updated.
