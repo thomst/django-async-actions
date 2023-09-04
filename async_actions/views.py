@@ -1,4 +1,3 @@
-from celery import states
 from celery.result import AsyncResult
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
@@ -13,9 +12,6 @@ from .utils import get_result_hash
 def tasks_by_ids(request):
     """
     _summary_
-
-    :param _type_ request: _description_
-    :param _type_ task_ids: _description_
     """
     tasks = request.GET
     response_tasks = dict()
