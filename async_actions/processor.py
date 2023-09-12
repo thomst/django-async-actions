@@ -88,32 +88,30 @@ class Processor:
     @property
     def objects(self):
         """
-        List of regarded objects. This property will be an empty list until the
-        :meth:`.run` method was called.
+        List of regarded objects. Populated by :meth:`.run` method.
         """
         return self._objects
 
     @property
     def locked_objects(self):
         """
-        Objects that were locked. This property will be an empty list until the
-        :meth:`.run` method was called.
+        Objects that were locked. Populated by :meth:`.run` method.
         """
         return self._locked_objects
 
     @property
     def results(self):
         """
-        Results returned from the workflow.delay call. Results will be available
-        after the :meth:`.run` method was called. Before that this will be an
-        empty list.
+        Results returned from the workflow.delay call. Populated by :meth:`.run`
+        method.
         """
         return self._results
 
     @property
     def signatures(self):
         """
-        List of signatures for all objects that are not locked.
+        List of signatures for all objects that are not locked. Populated by
+        :meth:`.run` method.
         """
         if self._signatures is None:
             self._signatures = list()
@@ -130,7 +128,8 @@ class Processor:
     @property
     def workflow(self):
         """
-        List of signatures for all objects that are not locked.
+        List of signatures for all objects that are not locked. Set by
+        :meth:`.run` method.
         """
         if self._workflow is None:
             self._workflow = self._get_workflow()
