@@ -3,7 +3,7 @@ from celery import states
 from django.template.loader import render_to_string
 from django.utils.html import mark_safe
 from item_messages import add_message, clear_messages
-from item_messages import INFO
+from item_messages import INFO, ERROR
 from .utils import get_result_hash
 
 
@@ -30,9 +30,12 @@ def build_task_message(result):
     return mark_safe(msg)
 
 
-def add_task_message(request, obj, result):
-    msg = build_task_message(result)
-    add_message(request, INFO, obj, msg)
+def add_task_message(request, obj, result_or_signature):
+    msg = build_task_message(result_or_signature)
+    if getattr(result_or_signature, 'successful', True):
+        add_message(request, INFO, obj, msg)
+    else:
+        add_message(request, ERROR, obj, msg)
     return msg
 
 
