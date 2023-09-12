@@ -30,9 +30,9 @@ def build_task_message(result):
     return mark_safe(msg)
 
 
-def add_task_message(request, obj, result_or_signature):
-    msg = build_task_message(result_or_signature)
-    if getattr(result_or_signature, 'successful', True):
+def add_task_message(request, obj, res_or_sig):
+    msg = build_task_message(res_or_sig)
+    if getattr(res_or_sig, 'successful', lambda: True)():
         add_message(request, INFO, obj, msg)
     else:
         add_message(request, ERROR, obj, msg)
