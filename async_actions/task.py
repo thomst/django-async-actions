@@ -4,6 +4,9 @@ from .utils import import_content_type
 from .utils import dyn_import
 
 
+# FIXME: The context data will be lost on failure since overwritten with
+# traceback on the result. Are we fine with that? Could we use on_failure
+# handler to store the context again?
 class ActionTask(Task):
     """
     _summary_
@@ -41,6 +44,7 @@ class ActionTask(Task):
 
     @staticmethod
     def _resolve_object(obj):
+        # FIXME: Can we do some caching for the content-type?
         if isinstance(obj, (tuple, list)):
             ContentType = import_content_type()
             ct = ContentType.objects.get_for_id(obj[0])
