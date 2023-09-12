@@ -20,6 +20,7 @@ def tasks_by_ids(request):
 
         # Get result by task-id.
         # FIXME: Is there a way to bulk-load results for better perfomance?
+        # FIXME: Results of failed tasks will be empty.
         result = AsyncResult(task_state.task_id)
 
         # If the checksum hasn't changed we skip the result.
