@@ -16,7 +16,7 @@ class ObjectTaskState(models.Model):
     active = models.BooleanField(null=True)
 
     def save(self, *args, **kwargs):
-        # active must be None or True.
+        # active must be None or True to be useful in a unique-together context.
         if not self.active:
             self.active = None
         super().save(*args, **kwargs)
