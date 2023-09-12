@@ -1,19 +1,17 @@
 from celery import Task
 from celery import shared_task
+from celery import states
 from .utils import import_content_type
 from .utils import dyn_import
 
 
-# FIXME: The context data will be lost on failure since overwritten with
-# traceback on the result. Are we fine with that? Could we use on_failure
-# handler to store the context again?
 class ActionTask(Task):
     """
     _summary_
     """
 
-    #: Since we need the results for monitoring we want them to be stored.
-    ignore_result = False
+    #: We update the result state ourselves.
+    ignore_result = True
 
     def __init__(self):
         super().__init__()
@@ -33,8 +31,18 @@ class ActionTask(Task):
         self._context['task_id'] = task_id
         self._context['task_name'] = self.name
         self._context['obj'] = args[0]
-        self._context['runtime_data'] = kwargs
         self._context['notes'] = list()
+        self._store_context(states.STARTED)
+
+    def on_success(self, retval, task_id, args, kwargs):
+        self._store_context(states.SUCCESS)
+
+    def on_failure(self, exc, task_id, args, kwargs, einfo):
+        self._context['exc_message'] = str(exc)
+        self._context['exc_type'] = type(exc).__name__
+        self._context['exc_module'] = type(exc).__module__
+        self._context['traceback'] = str(einfo)
+        self._store_context(states.FAILURE)
 
     def add_note(self, note, level='info'):
         notes = self._context.get('notes', list())
@@ -51,34 +59,25 @@ class ActionTask(Task):
             obj = ct.get_object_for_this_type(pk=obj[1])
         return obj
 
-    def __call__(self, obj, **runtime_data):
+    def __call__(self, obj, *args, **kwargs):
         """
         _summery_
         """
         # Let's pass in a real object as first argument.
         obj = self._resolve_object(obj)
-        super().__call__(obj, **runtime_data)
-
-        # We return the context to be sure it's stored result data.
-        return self._context
+        return super().__call__(obj, *args, **kwargs)
 
 
-def release_lock(task_id):
+# To be sure not to use the ActionTask class here - even if configured globally
+# as the class to be used - we set the base parameter explicitly.
+@shared_task(base=Task)
+def callback_release_lock(task_id):
     ObjectTaskState = dyn_import('async_actions.models', 'ObjectTaskState')
     state = ObjectTaskState.objects.get(task_id=task_id)
     state.active = False
     state.save(update_fields=('active',))
 
 
-# To be sure not to use the ActionTask class here - even if configured globally
-# as the class to be used - we set the base parameter explicitly.
-@shared_task(base=Task)
-def callback_release_lock(context):
-    release_lock(context['task_id'])
-
-
-# To be sure not to use the ActionTask class here - even if configured globally
-# as the class to be used - we set the base parameter explicitly.
 @shared_task(base=Task)
 def errorback_release_lock(request, exc, traceback):
-    release_lock(request.id)
+    callback_release_lock(request.id)

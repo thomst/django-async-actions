@@ -28,10 +28,10 @@ class Processor:
         :meth:`.sessions.BaseSession.run` method of each session
     :type runtime_data: any serialize able object, probably a dict
     """
-    def __init__(self, queryset, task, runtime_data=None):
+    def __init__(self, queryset, task=None, sig=None, runtime_data=None):
+        self._sig = sig or task.signature()
         self._queryset = queryset
-        self.task = task
-        self.runtime_data = runtime_data or dict()
+        self._runtime_data = runtime_data or dict()
         self._objects = list()
         self._locked_objects = list()
         self._results = list()
@@ -64,14 +64,18 @@ class Processor:
         :return: celery signature
         :rtype: :class:`~celery.canvas.Signature
         """
+        # Get an object-point to initiate the signature with.
         ContentType = import_content_type()
         ct_id = ContentType.objects.get_for_model(type(obj)).id
-        return self.task.signature(
-            args=[(ct_id, obj.id)],
-            kwargs=self.runtime_data,
-            link=callback_release_lock.s(),
-            link_error=errorback_release_lock.s()
-            )
+
+        # Now lets setup our signature by adding arguments and callbacks.
+        # We now use freeze to have a valid id and use it with the
+        # release-lock-callback that we subsequently add to the signature.
+        sig = self._sig.clone(args=[(ct_id, obj.id)], kwargs=self._runtime_data)
+        sig.freeze()
+        sig.set(link=callback_release_lock.si(sig.id))
+        sig.set(link_error=errorback_release_lock.s())
+        return sig
 
     def _get_workflow(self):
         """
@@ -117,7 +121,6 @@ class Processor:
             self._signatures = list()
             for obj in self._queryset:
                 signature = self._get_signature(obj)
-                signature.freeze()
                 if self._get_object_lock(obj, signature.id):
                     self._signatures.append(signature)
                     self._objects.append(obj)
