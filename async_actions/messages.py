@@ -22,11 +22,14 @@ class ProxyResult:
         self.result = self.info = dict(task_name=signature.task)
 
 
-def build_task_message(result):
-    if not isinstance(result, AsyncResult):
-        result = ProxyResult(result)
+def build_task_message(res_or_sig):
+    if not isinstance(res_or_sig, AsyncResult):
+        result = ProxyResult(res_or_sig)
+    else:
+        result = res_or_sig
     template = 'async_actions/action_task.html'
-    msg = render_to_string(template, dict(result=result, result_hash=get_result_hash(result)))
+    context = dict(result=result, result_hash=get_result_hash(result))
+    msg = render_to_string(template, context)
     return mark_safe(msg)
 
 
