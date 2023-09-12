@@ -11,7 +11,6 @@ app = Celery(
     task_cls=ActionTask,
     # backend='async_actions.backends:ActionDatabaseBackend',
     result_extended=True,
-    task_ignore_result=False,
 )
 
 # Using a string here means the worker doesn't have to serialize
