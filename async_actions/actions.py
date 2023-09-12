@@ -29,8 +29,7 @@ class BaseTaskAction:
         """
         processor = self.processor_cls(queryset, self.task, runtime_data)
         processor.run()
-        for sig in processor.signatures:
-            obj = sig.args[0].obj
+        for obj, sig in zip(processor.objects, processor.signatures):
             set_task_message(request, obj, sig)
 
         for obj in processor.locked_objects:

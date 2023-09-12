@@ -2,6 +2,8 @@
 from celery import group
 from .models import ObjectTaskState
 from .utils import import_content_type
+from .task import callback_release_lock
+from .task import errorback_release_lock
 
 
 class Processor:
@@ -30,6 +32,7 @@ class Processor:
         self._queryset = queryset
         self.task = task
         self.runtime_data = runtime_data or dict()
+        self._objects = list()
         self._locked_objects = list()
         self._results = list()
         self._signatures = None
@@ -49,12 +52,6 @@ class Processor:
         )
         return lock
 
-    def _get_context(self, obj):
-        """
-        _summary_
-        """
-        return self.task.ASYNC_CONTEXT_CLS(obj=obj, runtime_data=self.runtime_data)
-
     def _get_signature(self, obj):
         """
         Create an immutable :class:`~celery.canvas.Signature. See also
@@ -67,7 +64,14 @@ class Processor:
         :return: celery signature
         :rtype: :class:`~celery.canvas.Signature
         """
-        return self.task.si(self._get_context(obj))
+        ContentType = import_content_type()
+        ct_id = ContentType.objects.get_for_model(type(obj)).id
+        return self.task.signature(
+            args=[(ct_id, obj.id)],
+            kwargs=self.runtime_data,
+            link=callback_release_lock.s(),
+            link_error=errorback_release_lock.s()
+            )
 
     def _get_workflow(self):
         """
@@ -84,9 +88,10 @@ class Processor:
     @property
     def objects(self):
         """
-        Return a list of all objects of the passed in queryset.
+        List of regarded objects. This property will be an empty list until the
+        :meth:`.run` method was called.
         """
-        return list(self._queryset)
+        return self._objects
 
     @property
     def locked_objects(self):
@@ -112,11 +117,12 @@ class Processor:
         """
         if self._signatures is None:
             self._signatures = list()
-            for obj in self.objects:
+            for obj in self._queryset:
                 signature = self._get_signature(obj)
                 signature.freeze()
                 if self._get_object_lock(obj, signature.id):
                     self._signatures.append(signature)
+                    self._objects.append(obj)
                 else:
                     self._locked_objects.append(obj)
         return self._signatures
