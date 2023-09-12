@@ -51,8 +51,8 @@ MIDDLEWARE = [
     'django.middleware.csrf.CsrfViewMiddleware',
     'django.contrib.auth.middleware.AuthenticationMiddleware',
     'django.contrib.messages.middleware.MessageMiddleware',
-    'item_messages.middleware.ItemMessageMiddleware',
     'django.middleware.clickjacking.XFrameOptionsMiddleware',
+    'item_messages.middleware.ItemMessageMiddleware',
 ]
 
 ROOT_URLCONF = 'testapp.urls'
@@ -86,8 +86,12 @@ else:
 
 DATABASES = {
     'default': {
-        'ENGINE': 'django.db.backends.sqlite3',
-        'NAME': DB_NAME,
+        # 'ENGINE': 'django.db.backends.sqlite3',
+        # 'NAME': DB_NAME,
+        'ENGINE': 'django.db.backends.mysql',
+        'OPTIONS': {
+            'read_default_file': os.path.join(BASE_DIR, 'my.cnf'),
+        },
     }
 }
 
