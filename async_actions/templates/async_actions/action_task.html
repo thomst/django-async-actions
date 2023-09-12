@@ -6,7 +6,7 @@
         {% if result.info.notes %}
             <ul>
                 {% for note in result.info.notes%}
-                    <li class="note.level">note.content</li>
+                    <li class="note.level">{{note.content}}</li>
                 {% endfor %}
             </ul>
         {% endif %}
