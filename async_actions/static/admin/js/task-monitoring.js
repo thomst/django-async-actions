@@ -10,6 +10,7 @@
         $.getJSON(url, updateActionTasks).fail(ajaxFailure).done(run)
     }
 
+    // FIXME: We need to update the item_message's level based on task's state.
     function updateActionTasks(tasks) {
         $.each(tasks, function(task_id, html) {
             $('#' + task_id).replaceWith(html);
