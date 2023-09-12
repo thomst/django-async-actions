@@ -1,4 +1,5 @@
 from celery.result import AsyncResult
+from celery import states
 from django.template.loader import render_to_string
 from django.utils.html import mark_safe
 from item_messages import add_message, clear_messages
@@ -17,7 +18,7 @@ class ProxyResult:
     """
     def __init__(self, signature):
         self.task_id = signature.id
-        self.state = 'PENDING'
+        self.state = states.PENDING
         self.result = self.info = dict(task_name=signature.task)
 
 
