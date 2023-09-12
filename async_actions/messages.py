@@ -13,8 +13,8 @@ class ProxyResult:
     :class:`~celery.canvas.Signature`.
 
     Results of pending tasks are not populated by any data at all. To render a
-    message for a pending task we use fed a :class:`.ProxyResult` with data from
-    a signature and use it within our message instead of a real result object.
+    message for a pending task we fed a :class:`.ProxyResult` with data from a
+    signature and use it within our message instead of a real result object.
     """
     def __init__(self, signature):
         self.task_id = signature.id
