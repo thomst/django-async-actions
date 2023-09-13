@@ -28,9 +28,6 @@ class ActionTask(Task):
         Prepare the context attribute.
         """
         self._context = dict()
-        self._context['task_id'] = task_id
-        self._context['task_name'] = self.name
-        self._context['obj'] = args[0]
         self._context['notes'] = list()
         self._store_context(states.STARTED)
 
@@ -45,9 +42,7 @@ class ActionTask(Task):
         self._store_context(states.FAILURE)
 
     def add_note(self, note, level='info'):
-        notes = self._context.get('notes', list())
-        notes.append(dict(content=note, level=level))
-        self._context['notes'] = notes
+        self._context['notes'].append(dict(content=note, level=level))
         self._store_context()
 
     @staticmethod
@@ -72,10 +67,10 @@ class ActionTask(Task):
 # as the class to be used - we set the base parameter explicitly.
 @shared_task(base=Task)
 def callback_release_lock(task_id):
-    ObjectTaskState = dyn_import('async_actions.models', 'ObjectTaskState')
-    state = ObjectTaskState.objects.get(task_id=task_id)
-    state.active = False
-    state.save(update_fields=('active',))
+    ActionTaskResult = dyn_import('async_actions.models', 'ActionTaskResult')
+    task_result = ActionTaskResult.objects.get(task_id=task_id)
+    task_result.active = False
+    task_result.save(update_fields=('active',))
 
 
 @shared_task(base=Task)

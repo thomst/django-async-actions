@@ -1,6 +1,7 @@
 
 from celery import group
-from .models import ObjectTaskState
+from celery import states
+from .models import ActionTaskResult
 from .utils import import_content_type
 from .task import callback_release_lock
 from .task import errorback_release_lock
@@ -32,25 +33,33 @@ class Processor:
         self._sig = sig or task.signature()
         self._queryset = queryset
         self._runtime_data = runtime_data or dict()
-        self._objects = list()
-        self._locked_objects = list()
         self._results = list()
+        self._task_results = list()
+        self._locked_task_results = list()
         self._signatures = None
         self._workflow = None
 
-    def _get_object_lock(self, obj, task_id):
+    def _get_object_lock(self, obj, signature):
         """
         Try to get a lock for the object.
         """
         ContentType = import_content_type()
         content_type = ContentType.objects.get_for_model(type(obj))
-        _, lock = ObjectTaskState.objects.get_or_create(
-            content_type=content_type,
-            object_id=obj.pk,
+        task_result, created = ActionTaskResult.objects.get_or_create(
+            ctype=content_type,
+            obj_id=obj.pk,
             active=True,
-            defaults=dict(task_id=task_id)
+            defaults=dict(
+                task_id=signature.id,
+                task_name=signature.task,
+                status=states.PENDING
+            )
         )
-        return lock
+        if created:
+            self._task_results.append(task_result)
+        else:
+            self._locked_task_results.append(task_result)
+        return created
 
     def _get_signature(self, obj):
         """
@@ -77,6 +86,14 @@ class Processor:
         sig.set(link_error=errorback_release_lock.s())
         return sig
 
+    def _get_signatures(self):
+        signatures = list()
+        for obj in self._queryset:
+            signature = self._get_signature(obj)
+            if self._get_object_lock(obj, signature):
+                signatures.append(signature)
+        return signatures
+
     def _get_workflow(self):
         """
         Build a celery workflow. See also
@@ -90,20 +107,6 @@ class Processor:
         return group(*self.signatures)
 
     @property
-    def objects(self):
-        """
-        List of regarded objects. Populated by :meth:`.run` method.
-        """
-        return self._objects
-
-    @property
-    def locked_objects(self):
-        """
-        Objects that were locked. Populated by :meth:`.run` method.
-        """
-        return self._locked_objects
-
-    @property
     def results(self):
         """
         Results returned from the workflow.delay call. Populated by :meth:`.run`
@@ -112,20 +115,29 @@ class Processor:
         return self._results
 
     @property
+    def task_results(self):
+        """
+        :class:`.models.ActionTaskResult` instances we've created. Populated by
+        :meth:`.run` method.
+        """
+        return self._task_results
+
+    @property
+    def locked_task_results(self):
+        """
+        :class:`.models.ActionTaskResult` instances that were locked. Populated
+        by :meth:`.run` method.
+        """
+        return self._locked_task_results
+
+    @property
     def signatures(self):
         """
         List of signatures for all objects that are not locked. Populated by
         :meth:`.run` method.
         """
         if self._signatures is None:
-            self._signatures = list()
-            for obj in self._queryset:
-                signature = self._get_signature(obj)
-                if self._get_object_lock(obj, signature.id):
-                    self._signatures.append(signature)
-                    self._objects.append(obj)
-                else:
-                    self._locked_objects.append(obj)
+            self._signatures = self._get_signatures()
         return self._signatures
 
     @property
