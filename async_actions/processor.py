@@ -146,4 +146,5 @@ class Processor:
         :return :class:`~celery.result.AsyncResult: result object
         """
         self._results = self.workflow.delay()
+        self._results.save()
         return self._results
