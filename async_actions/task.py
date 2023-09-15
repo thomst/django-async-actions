@@ -20,19 +20,28 @@ class ActionTask(Task):
 
     def before_start(self, task_id, args, kwargs):
         """
-        Get ActionTaskResult object.
+        _summary_
         """
         self._action = ActionTaskResult.objects.get(task_id=self.request.id)
 
     @property
     def obj(self):
+        """
+        _summary_
+        """
         return self._action.obj
 
     @property
     def notes(self):
+        """
+        _summary_
+        """
         return self._action.notes
 
     def add_note(self, note, level=INFO):
+        """
+        _summary_
+        """
         self.notes.create(note=note, level=level)
 
 
