@@ -3,15 +3,15 @@
         <p>id: {{result.task_id}}</p>
         <p>name: {{result.task_name}}</p>
         <p>state: {{result.status}}</p>
-        {% if meta.notes %}
+        {% if result.notes %}
             <ul>
-                {% for note in meta.notes%}
-                    <li class="note.level">{{note.content}}</li>
+                {% for note in result.notes.all %}
+                    <li class="note.level">{{note.note}}</li>
                 {% endfor %}
                 {% if meta.exc_message %}
                     <li class="error">
                         Exception was: {{meta.exc_message}}
-                        <pre>{{meta.traceback}}</pre>
+                        <pre>{{result.traceback}}</pre>
                     </li>
                 {% endif %}
             </ul>

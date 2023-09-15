@@ -1,3 +1,4 @@
+from item_messages.constants import INFO
 from celery import Task
 from celery import shared_task
 from celery import states
@@ -11,56 +12,30 @@ class ActionTask(Task):
     """
 
     #: We update the result state ourselves.
-    ignore_result = True
-    track_started = False
+    ignore_result = False
+    track_started = True
+
 
     def __init__(self):
         super().__init__()
-        self._context = None
-
-    def _store_context(self, state=None):
-        # FIXME: Not sure what it costs to get current state here. In most cases
-        # it would be fine to just use STARTED as state.
-        state = state or self.backend.get_state(self.request.id)
-        self.update_state(state=state, meta=self._context)
+        self._action = None
 
     def before_start(self, task_id, args, kwargs):
         """
-        Prepare the context attribute.
+        Get ActionTaskResult object.
         """
-        self._context = dict()
-        self._context['notes'] = list()
-        self._store_context(states.STARTED)
+        self._action = ActionTaskResult.objects.get(task_id=self.request.id)
 
-    def on_success(self, retval, task_id, args, kwargs):
-        self._store_context(states.SUCCESS)
+    @property
+    def obj(self):
+        return self._action.obj
 
-    def on_failure(self, exc, task_id, args, kwargs, einfo):
-        self._context['exc_message'] = str(exc)
-        self._context['exc_type'] = type(exc).__name__
-        self._context['exc_module'] = type(exc).__module__
-        self._context['traceback'] = str(einfo)
-        self._store_context(states.FAILURE)
+    @property
+    def notes(self):
+        return self._action.notes
 
-    def add_note(self, note, level='info'):
-        self._context['notes'].append(dict(content=note, level=level))
-        self._store_context()
-
-    @staticmethod
-    def _resolve_object(obj):
-        # FIXME: Can we do some caching for the content-type?
-        if isinstance(obj, (tuple, list)):
-            ct = ContentType.objects.get_for_id(obj[0])
-            obj = ct.get_object_for_this_type(pk=obj[1])
-        return obj
-
-    def __call__(self, obj, *args, **kwargs):
-        """
-        _summery_
-        """
-        # Let's pass in a real object as first argument.
-        obj = self._resolve_object(obj)
-        return super().__call__(obj, *args, **kwargs)
+    def add_note(self, note, level=INFO):
+        self.notes.create(note=note, level=level)
 
 
 # To be sure not to use the ActionTask class here - even if configured globally
