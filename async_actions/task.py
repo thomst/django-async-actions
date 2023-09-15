@@ -1,8 +1,8 @@
 from celery import Task
 from celery import shared_task
 from celery import states
-from .utils import import_content_type
-from .utils import dyn_import
+from django.contrib.contenttypes.models import ContentType
+from .models import ActionTaskResult
 
 
 class ActionTask(Task):
@@ -49,7 +49,6 @@ class ActionTask(Task):
     def _resolve_object(obj):
         # FIXME: Can we do some caching for the content-type?
         if isinstance(obj, (tuple, list)):
-            ContentType = import_content_type()
             ct = ContentType.objects.get_for_id(obj[0])
             obj = ct.get_object_for_this_type(pk=obj[1])
         return obj
@@ -67,7 +66,6 @@ class ActionTask(Task):
 # as the class to be used - we set the base parameter explicitly.
 @shared_task(base=Task)
 def callback_release_lock(task_id):
-    ActionTaskResult = dyn_import('async_actions.models', 'ActionTaskResult')
     task_result = ActionTaskResult.objects.get(task_id=task_id)
     task_result.active = False
     task_result.save(update_fields=('active',))

@@ -1,8 +1,8 @@
 
 from celery import group
 from celery import states
+from django.contrib.contenttypes.models import ContentType
 from .models import ActionTaskResult
-from .utils import import_content_type
 from .task import callback_release_lock
 from .task import errorback_release_lock
 
@@ -43,7 +43,6 @@ class Processor:
         """
         Try to get a lock for the object.
         """
-        ContentType = import_content_type()
         content_type = ContentType.objects.get_for_model(type(obj))
         task_result, created = ActionTaskResult.objects.get_or_create(
             ctype=content_type,
@@ -74,7 +73,6 @@ class Processor:
         :rtype: :class:`~celery.canvas.Signature
         """
         # Get an object-point to initiate the signature with.
-        ContentType = import_content_type()
         ct_id = ContentType.objects.get_for_model(type(obj)).id
 
         # Now lets setup our signature by adding arguments and callbacks.

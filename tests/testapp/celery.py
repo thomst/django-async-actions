@@ -1,14 +1,14 @@
 import os
 
 from celery import Celery
-from async_actions.task import ActionTask
+
 
 # Set the default Django settings module for the 'celery' program.
 os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'testapp.settings')
 
 app = Celery(
     'testapp',
-    task_cls=ActionTask,
+    task_cls='async_actions.task:ActionTask',
     # backend='async_actions.backends:ActionDatabaseBackend',
     result_extended=True,
 )
