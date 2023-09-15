@@ -1,8 +1,6 @@
 from item_messages.constants import INFO
 from celery import Task
 from celery import shared_task
-from celery import states
-from django.contrib.contenttypes.models import ContentType
 from .models import ActionTaskResult
 
 
