@@ -145,4 +145,3 @@ CELERY_RESULT_SERIALIZER = 'json'
 CELERY_CACHE_BACKEND = 'django-cache'
 CELERY_RESULT_BACKEND = 'async_actions.backends:ActionDatabaseBackend'
 CELERY_RESULT_EXTENDED = True
-# CELERY_RESULT_BACKEND = 'rpc://'

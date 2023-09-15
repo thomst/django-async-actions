@@ -10,6 +10,7 @@ class ActionTaskResult(TaskResult):
     """
     _summary_
     """
+
     ctype = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     obj_id = models.PositiveIntegerField()
     obj = GenericForeignKey("ctype", "obj_id")
@@ -29,7 +30,7 @@ class ActionTaskResult(TaskResult):
         super().save(*args, **kwargs)
 
     class Meta:
-        unique_together = ('ctype', 'obj_id', 'active')
+        unique_together = ("ctype", "obj_id", "active")
         indexes = (
             models.Index(fields=["obj_id"]),
             models.Index(fields=["ctype"]),
