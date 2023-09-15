@@ -10,7 +10,6 @@ app = Celery(
     'testapp',
     task_cls='async_actions.task:ActionTask',
     # backend='async_actions.backends:ActionDatabaseBackend',
-    result_extended=True,
 )
 
 # Using a string here means the worker doesn't have to serialize

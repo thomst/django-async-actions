@@ -12,6 +12,7 @@ class ActionTask(Task):
 
     #: We update the result state ourselves.
     ignore_result = True
+    track_started = False
 
     def __init__(self):
         super().__init__()
