@@ -15,16 +15,8 @@ class ActionTaskState(TaskResult):
     ctype = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     obj_id = models.PositiveIntegerField()
     obj = GenericForeignKey("ctype", "obj_id")
-    active = models.BooleanField(null=True)
-
-    def save(self, *args, **kwargs):
-        # active must be None or True to be useful in a unique-together context.
-        if not self.active:
-            self.active = None
-        super().save(*args, **kwargs)
 
     class Meta:
-        unique_together = ("ctype", "obj_id", "active")
         indexes = (
             models.Index(fields=["obj_id"]),
             models.Index(fields=["ctype"]),
