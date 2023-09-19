@@ -3,6 +3,7 @@ from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import permission_required
 from .messages import set_task_message
 from .models import ActionTaskState
+from .utils import get_message_checksum
 
 
 @require_GET
@@ -16,7 +17,7 @@ def tasks_by_ids(request):
     task_results = ActionTaskState.objects.filter(task_id__in=task_data.keys())
     for result in task_results:
         # If the checksum hasn't changed we skip the result.
-        if result.state_hash == int(task_data[result.task_id]):
+        if get_message_checksum(result) == int(task_data[result.task_id]):
             continue
 
         # Set the task message and build the json response list.
