@@ -72,10 +72,7 @@ class Processor:
         :return: celery signature
         :rtype: :class:`~celery.canvas.Signature
         """
-        # Get an object-point to initiate the signature with.
-        ct_id = ContentType.objects.get_for_model(type(obj)).id
-
-        # Now lets setup our signature by adding arguments and callbacks.
+        # Let's setup our signature by adding arguments and callbacks.
         # We now use freeze to have a valid id and use it with the
         # release-lock-callback that we subsequently add to the signature.
         sig = self._sig.clone(kwargs=self._runtime_data)
