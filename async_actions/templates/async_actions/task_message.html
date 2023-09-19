@@ -1,18 +1,18 @@
 {% load task_message %}
 {% autoescape on %}
-    <span class="actiontask {{result.status}}" id="{{result.task_id}}" data-hash="{{result|get_checksum}}">
-        <p>id: {{result.task_id}}</p>
-        <p>name: {{result.task_name}}</p>
-        <p>state: {{result.status}}</p>
-        {% if result.notes %}
+    <span class="actiontask {{task_state.status}}" id="{{task_state.task_id}}" data-hash="{{task_state|get_checksum}}">
+        <p>id: {{task_state.task_id}}</p>
+        <p>name: {{task_state.task_name}}</p>
+        <p>state: {{task_state.status}}</p>
+        {% if task_state.notes %}
             <ul>
-                {% for note in result.notes.all %}
+                {% for note in task_state.notes.all %}
                     <li class="note.level">{{note.note}}</li>
                 {% endfor %}
                 {% if meta.exc_message %}
                     <li class="error">
                         Exception was: {{meta.exc_message}}
-                        <pre>{{result.traceback}}</pre>
+                        <pre>{{task_state.traceback}}</pre>
                     </li>
                 {% endif %}
             </ul>
