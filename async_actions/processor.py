@@ -44,7 +44,7 @@ class Processor:
         Try to get a lock for the object.
         """
         content_type = ContentType.objects.get_for_model(type(obj))
-        task_result, created = ActionTaskResult.objects.get_or_create(
+        params = dict(
             ctype=content_type,
             obj_id=obj.pk,
             active=True,
@@ -54,6 +54,7 @@ class Processor:
                 status=states.PENDING
             )
         )
+        task_result, created = ActionTaskResult.objects.get_or_create(params)
         if created:
             self._task_results.append(task_result)
         else:
