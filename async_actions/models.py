@@ -22,9 +22,6 @@ class ActionTaskResult(TaskResult):
     def state_hash(self):
         return hash((self.status, self.notes.values_list('id', flat=True)))
 
-    def get_meta_data(self):
-        return loads(self.result, self.content_type, self.content_encoding)
-
     def save(self, *args, **kwargs):
         # active must be None or True to be useful in a unique-together context.
         if not self.active:
