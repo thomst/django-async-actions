@@ -34,8 +34,8 @@ class Processor:
         self._queryset = queryset
         self._runtime_data = runtime_data or dict()
         self._results = list()
-        self._task_results = list()
-        self._locked_task_results = list()
+        self._task_states = list()
+        self._locked_task_states = list()
         self._signatures = None
         self._workflow = None
 
@@ -54,11 +54,11 @@ class Processor:
                 status=states.PENDING
             )
         )
-        task_result, created = ActionTaskState.objects.get_or_create(params)
+        task_state, created = ActionTaskState.objects.get_or_create(params)
         if created:
-            self._task_results.append(task_result)
+            self._task_states.append(task_state)
         else:
-            self._locked_task_results.append(task_result)
+            self._locked_task_states.append(task_state)
         return created
 
     def _get_signature(self, obj):
@@ -111,20 +111,20 @@ class Processor:
         return self._results
 
     @property
-    def task_results(self):
+    def task_states(self):
         """
         :class:`.models.ActionTaskResult` instances we've created. Populated by
         :meth:`.run` method.
         """
-        return self._task_results
+        return self._task_states
 
     @property
-    def locked_task_results(self):
+    def locked_task_states(self):
         """
         :class:`.models.ActionTaskResult` instances that were locked. Populated
         by :meth:`.run` method.
         """
-        return self._locked_task_results
+        return self._locked_task_states
 
     @property
     def signatures(self):

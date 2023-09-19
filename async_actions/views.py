@@ -14,14 +14,14 @@ def tasks_by_ids(request):
     """
     task_data = request.GET
     response_tasks = dict()
-    task_results = ActionTaskState.objects.filter(task_id__in=task_data.keys())
-    for result in task_results:
-        # If the checksum hasn't changed we skip the result.
-        if get_message_checksum(result) == int(task_data[result.task_id]):
+    states = ActionTaskState.objects.filter(task_id__in=task_data.keys())
+    for state in states:
+        # If the checksum hasn't changed we skip the state.
+        if get_message_checksum(state) == int(task_data[state.task_id]):
             continue
 
         # Set the task message and build the json response list.
-        msg = set_task_message(request, result)
-        response_tasks[result.task_id] = msg
+        msg = set_task_message(request, state)
+        response_tasks[state.task_id] = msg
 
     return JsonResponse(response_tasks)

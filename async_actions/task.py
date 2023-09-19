@@ -16,27 +16,27 @@ class ActionTask(Task):
 
     def __init__(self):
         super().__init__()
-        self._action = None
+        self._state = None
 
     def before_start(self, task_id, args, kwargs):
         """
         _summary_
         """
-        self._action = ActionTaskState.objects.get(task_id=self.request.id)
+        self._state = ActionTaskState.objects.get(task_id=self.request.id)
 
     @property
     def obj(self):
         """
         _summary_
         """
-        return self._action.obj
+        return self._state.obj
 
     @property
     def notes(self):
         """
         _summary_
         """
-        return self._action.notes
+        return self._state.notes
 
     def add_note(self, note, level=INFO):
         """
@@ -49,9 +49,9 @@ class ActionTask(Task):
 # as the class to be used - we set the base parameter explicitly.
 @shared_task(base=Task)
 def callback_release_lock(task_id):
-    task_result = ActionTaskState.objects.get(task_id=task_id)
-    task_result.active = False
-    task_result.save(update_fields=('active',))
+    task_state = ActionTaskState.objects.get(task_id=task_id)
+    task_state.active = False
+    task_state.save(update_fields=('active',))
 
 
 @shared_task(base=Task)
