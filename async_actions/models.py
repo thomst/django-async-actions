@@ -7,8 +7,7 @@ from django.db import models
 from django.utils.translation import gettext_lazy as _
 
 
-
-class ActionTaskResult(TaskResult):
+class ActionTaskState(TaskResult):
     """
     _summary_
     """
@@ -42,7 +41,7 @@ class ActionTaskNote(models.Model):
     """
 
     action_task = models.ForeignKey(
-        ActionTaskResult,
+        ActionTaskState,
         on_delete=models.CASCADE,
         related_name="notes",
         verbose_name=_("AktionTaskResult"),

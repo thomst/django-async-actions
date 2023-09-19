@@ -2,7 +2,7 @@
 from celery import group
 from celery import states
 from django.contrib.contenttypes.models import ContentType
-from .models import ActionTaskResult
+from .models import ActionTaskState
 from .task import callback_release_lock
 from .task import errorback_release_lock
 
@@ -54,7 +54,7 @@ class Processor:
                 status=states.PENDING
             )
         )
-        task_result, created = ActionTaskResult.objects.get_or_create(params)
+        task_result, created = ActionTaskState.objects.get_or_create(params)
         if created:
             self._task_results.append(task_result)
         else:

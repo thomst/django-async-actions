@@ -1,7 +1,7 @@
 from item_messages.constants import INFO
 from celery import Task
 from celery import shared_task
-from .models import ActionTaskResult
+from .models import ActionTaskState
 
 
 class ActionTask(Task):
@@ -22,7 +22,7 @@ class ActionTask(Task):
         """
         _summary_
         """
-        self._action = ActionTaskResult.objects.get(task_id=self.request.id)
+        self._action = ActionTaskState.objects.get(task_id=self.request.id)
 
     @property
     def obj(self):
@@ -49,7 +49,7 @@ class ActionTask(Task):
 # as the class to be used - we set the base parameter explicitly.
 @shared_task(base=Task)
 def callback_release_lock(task_id):
-    task_result = ActionTaskResult.objects.get(task_id=task_id)
+    task_result = ActionTaskState.objects.get(task_id=task_id)
     task_result.active = False
     task_result.save(update_fields=('active',))
 

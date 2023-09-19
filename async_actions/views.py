@@ -2,7 +2,7 @@ from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import permission_required
 from .messages import set_task_message
-from .models import ActionTaskResult
+from .models import ActionTaskState
 
 
 @require_GET
@@ -13,7 +13,7 @@ def tasks_by_ids(request):
     """
     task_data = request.GET
     response_tasks = dict()
-    task_results = ActionTaskResult.objects.filter(task_id__in=task_data.keys())
+    task_results = ActionTaskState.objects.filter(task_id__in=task_data.keys())
     for result in task_results:
         # If the checksum hasn't changed we skip the result.
         if result.state_hash == int(task_data[result.task_id]):
