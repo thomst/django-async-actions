@@ -42,12 +42,12 @@ class BaseTaskAction:
         processor = self._processor_cls(queryset, self._task, self._sig, runtime_data)
         processor.run()
 
-        for task_result in processor.task_results:
-            set_task_message(request, task_result)
+        for task_state in processor.task_states:
+            set_task_message(request, task_state)
 
-        for task_result in processor.locked_task_results:
+        for obj in processor.locked_objects:
             msg = 'There is already a running action task for this object.'
-            add_message(request, ERROR, task_result.obj, msg)
+            add_message(request, ERROR, obj, msg)
 
     def __call__(self, modeladmin, request, queryset):
         """

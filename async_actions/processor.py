@@ -3,8 +3,8 @@ from celery import group
 from celery import states
 from django.contrib.contenttypes.models import ContentType
 from .models import ActionTaskState
-from .task import callback_release_lock
-from .task import errorback_release_lock
+from .models import Lock
+from .task import release_lock
 
 
 class Processor:
@@ -35,11 +35,19 @@ class Processor:
         self._runtime_data = runtime_data or dict()
         self._results = list()
         self._task_states = list()
-        self._locked_task_states = list()
+        self._locked_objects = list()
         self._signatures = None
         self._workflow = None
 
-    def _get_object_lock(self, obj, signature):
+    def _get_lock(self, obj):
+        """
+        Get a lock to run an action task for a specific object.
+        """
+        checksum = hash((obj.id, type(obj).__name__, type(obj.__module__)))
+        lock, created = Lock.objects.get_or_create(checksum=checksum)
+        return lock if created else None
+
+    def _get_task_state(self, obj, signature):
         """
         Try to get a lock for the object.
         """
@@ -47,21 +55,15 @@ class Processor:
         params = dict(
             ctype=content_type,
             obj_id=obj.pk,
-            active=True,
-            defaults=dict(
-                task_id=signature.id,
-                task_name=signature.task,
-                status=states.PENDING
-            )
+            task_id=signature.id,
+            task_name=signature.task,
+            status=states.PENDING
         )
-        task_state, created = ActionTaskState.objects.get_or_create(params)
-        if created:
-            self._task_states.append(task_state)
-        else:
-            self._locked_task_states.append(task_state)
-        return created
+        task_state = ActionTaskState(**params)
+        task_state.save()
+        return task_state
 
-    def _get_signature(self, obj):
+    def _get_signature(self, lock=None):
         """
         Create an immutable :class:`~celery.canvas.Signature. See also
         `https://docs.celeryq.dev/en/stable/userguide/canvas.html#immutability`_.
@@ -78,16 +80,21 @@ class Processor:
         # release-lock-callback that we subsequently add to the signature.
         sig = self._sig.clone(kwargs=self._runtime_data)
         sig.freeze()
-        sig.set(link=callback_release_lock.si(sig.id))
-        sig.set(link_error=errorback_release_lock.s())
+        if lock:
+            sig.set(link=release_lock.si(lock.checksum))
+            sig.set(link_error=release_lock.si(lock.checksum))
         return sig
 
     def _get_signatures(self):
         signatures = list()
         for obj in self._queryset:
-            signature = self._get_signature(obj)
-            if self._get_object_lock(obj, signature):
+            lock = self._get_lock(obj)
+            if lock:
+                signature = self._get_signature(lock)
+                self._task_states.append(self._get_task_state(obj, signature))
                 signatures.append(signature)
+            else:
+                self._locked_objects.append(obj)
         return signatures
 
     def _get_workflow(self):
@@ -119,12 +126,12 @@ class Processor:
         return self._task_states
 
     @property
-    def locked_task_states(self):
+    def locked_objects(self):
         """
         :class:`.models.ActionTaskResult` instances that were locked. Populated
         by :meth:`.run` method.
         """
-        return self._locked_task_states
+        return self._locked_objects
 
     @property
     def signatures(self):

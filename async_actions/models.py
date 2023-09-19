@@ -64,3 +64,13 @@ class ActionTaskNote(models.Model):
         ordering = ("action_task", "created_time")
         verbose_name = _("Note")
         verbose_name_plural = _("Notes")
+
+
+class Lock(models.Model):
+    """
+    Very simple lock mechanism based on a unique checksum.
+
+    # TODO: Using https://github.com/nshafer/django-hashid-field/ might be a
+    more reliable alternative.
+    """
+    checksum = models.BigIntegerField('Lock-checksum', unique=True)
