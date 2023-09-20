@@ -7,7 +7,7 @@ os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'testapp.settings')
 
 app = Celery(
     'testapp',
-    task_cls='async_actions.task:ActionTask',
+    task_cls='async_actions.tasks:ActionTask',
     # backend='async_actions.backends:ActionDatabaseBackend',
 )
 

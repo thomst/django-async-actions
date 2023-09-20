@@ -49,5 +49,6 @@ class ActionTask(Task):
 # To be sure not to use the ActionTask class here - even if configured globally
 # as the class to be used - we set the base parameter explicitly.
 @shared_task(base=Task)
-def release_lock(checksum):
-    Lock.objects.get(checksum=int(checksum)).delete()
+def release_locks(*lock_ids):
+    for lock_id in lock_ids:
+        Lock.objects.get(checksum=int(lock_id)).delete()

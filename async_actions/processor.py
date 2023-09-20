@@ -4,7 +4,7 @@ from celery import states
 from django.contrib.contenttypes.models import ContentType
 from .models import ActionTaskState
 from .models import Lock
-from .task import release_lock
+from .tasks import release_lock
 
 
 class Processor:
