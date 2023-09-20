@@ -58,6 +58,29 @@ class ActionTaskNote(models.Model):
         verbose_name_plural = _("Notes")
 
 
+class LockManager(models.Manager):
+    """
+    _summary_
+    """
+    def get_lock(self, lock_id):
+        """
+        _summary_
+
+        :param int lock_id: _description_
+        :return int or None: lock_id if the lock were created. Else None.
+        """
+        lock, created = self.get_or_create(checksum=int(lock_id))
+        return lock.checksum if created else None
+
+    def release_lock(self, lock_id):
+        """
+        _summary_
+
+        :param int lock_id: _description_
+        """
+        self.get(checksum=int(lock_id)).delete()
+
+
 class Lock(models.Model):
     """
     Very simple lock mechanism based on a unique checksum.
@@ -66,3 +89,4 @@ class Lock(models.Model):
     more reliable alternative.
     """
     checksum = models.BigIntegerField('Lock-checksum', unique=True)
+    objects = LockManager()

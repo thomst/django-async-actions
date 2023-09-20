@@ -4,7 +4,7 @@ from celery import states
 from django.contrib.contenttypes.models import ContentType
 from .models import ActionTaskState
 from .models import Lock
-from .tasks import release_lock
+from .tasks import release_locks
 
 
 class Processor:
@@ -40,13 +40,16 @@ class Processor:
         self._signatures = None
         self._workflow = None
 
-    def _get_lock(self, obj):
+    def _get_locks(self, obj):
         """
-        Get a lock to run an action task for a specific object.
+        Get locks for an object and related resources. Return a tuple of
+        lock-ids or None if a lock couldn't be preserved.
+
+        :return tuple: tuple of lock-ids
         """
         checksum = hash((obj.id, type(obj).__name__, type(obj.__module__)))
-        lock, created = Lock.objects.get_or_create(checksum=checksum)
-        return lock if created else None
+        lock_id = Lock.objects.get_lock(checksum)
+        return (lock_id,) if lock_id else None
 
     def _get_task_state(self, obj, signature):
         """
@@ -64,7 +67,7 @@ class Processor:
         task_state.save()
         return task_state
 
-    def _get_signature(self, lock=None):
+    def _get_signature(self, *lock_ids):
         """
         Create an immutable :class:`~celery.canvas.Signature. See also
         `https://docs.celeryq.dev/en/stable/userguide/canvas.html#immutability`_.
@@ -81,17 +84,17 @@ class Processor:
         # release-lock-callback that we subsequently add to the signature.
         sig = self._sig.clone(kwargs=self._runtime_data)
         sig.freeze()
-        if lock:
-            sig.set(link=release_lock.si(lock.checksum))
-            sig.set(link_error=release_lock.si(lock.checksum))
+        if lock_ids:
+            sig.set(link=release_locks.si(*lock_ids))
+            sig.set(link_error=release_locks.si(*lock_ids))
         return sig
 
     def _get_signatures(self):
         signatures = list()
         for obj in self._queryset:
-            lock = self._get_lock(obj)
-            if lock:
-                signature = self._get_signature(lock)
+            lock_ids = self._get_locks(obj)
+            if lock_ids:
+                signature = self._get_signature(*lock_ids)
                 self._task_states.append(self._get_task_state(obj, signature))
                 signatures.append(signature)
             else:
