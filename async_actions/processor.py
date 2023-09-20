@@ -29,8 +29,9 @@ class Processor:
         :meth:`.sessions.BaseSession.run` method of each session
     :type runtime_data: any serialize able object, probably a dict
     """
-    def __init__(self, queryset, task=None, sig=None, runtime_data=None):
-        self._sig = sig or task.signature()
+
+    def __init__(self, queryset, sig, runtime_data=None):
+        self._sig = sig
         self._queryset = queryset
         self._runtime_data = runtime_data or dict()
         self._results = list()

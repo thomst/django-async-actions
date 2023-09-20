@@ -1,3 +1,4 @@
+from celery.canvas import Signature
 from celery.app.task import Task
 from item_messages import add_message, ERROR
 from .messages import set_task_message
@@ -8,21 +9,20 @@ class BaseTaskAction:
     """
     Base class for admin actions running a session.
     """
-    def __init__(self, task=None, sig=None, processor_cls=None, description=None, permissions=None, runtime_data=None):
-        self._task = task
+    _PROCESSOR_CLS = Processor
+
+    def __init__(self, sig=None, processor_cls=None, name=None, description=None, permissions=None, runtime_data=None):
         self._sig = sig
-        self._processor_cls = processor_cls or Processor
+        self._processor_cls = processor_cls or self._PROCESSOR_CLS
         self._runtime_data = runtime_data or dict()
+        self._name = name
         self.short_description = description or f'run {self.__name__}'
         if permissions:
             self.allowed_permissions = permissions
 
     @property
     def __name__(self):
-        if self._task:
-            return self._task.__name__
-        else:
-            return self._sig.name.split('.')[-1]
+        return self._name or self._sig.name.split('.')[-1]
 
     def _get_runtime_data(self):
         """
@@ -39,7 +39,7 @@ class BaseTaskAction:
         :param _type_ queryset: _description_
         """
         runtime_data = self._get_runtime_data()
-        processor = self._processor_cls(queryset, self._task, self._sig, runtime_data)
+        processor = self._processor_cls(queryset, self._sig, runtime_data)
         processor.run()
 
         for task_state in processor.task_states:
@@ -82,6 +82,7 @@ def as_action(*args, **options):
 
     :param :class:`~.TaskAction` action_cls: _description_
     :param :class:`~.processor.Processor` processor_cls: _description_
+    :param str name: _description_
     :param str description: _description_
     :param list permissions: _description_
     :param dict runtime_data: _description_
@@ -89,12 +90,12 @@ def as_action(*args, **options):
     """
     def create_action_from_task(**options):
 
-        def _inner(task_or_sig):
+        def _inner(thing):
             action_cls = options.get('action_cls', TaskAction)
-            if isinstance(task_or_sig, Task):
-                return action_cls(task=task_or_sig, **options)
-            else:
-                return action_cls(sig=task_or_sig, **options)
+            if isinstance(thing, Task):
+                return action_cls(sig=thing.signature(), **options)
+            elif isinstance(thing, Signature):
+                return action_cls(sig=thing, **options)
         return _inner
 
     # Usage as decorator without parameters or as function.
