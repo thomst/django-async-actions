@@ -1,7 +1,8 @@
 from celery.canvas import Signature
 from celery.app.task import Task
 from item_messages import add_message, ERROR
-from .messages import set_task_message
+from item_messages import clear_messages
+from .messages import add_task_message
 from .processor import Processor
 
 
@@ -42,8 +43,11 @@ class BaseTaskAction:
         processor = self._processor_cls(queryset, self._sig, runtime_data)
         processor.run()
 
-        for task_state in processor.task_states:
-            set_task_message(request, task_state)
+        for task_states in processor.task_states:
+            clear_messages(request, task_states[0].obj)
+            for task_state in task_states:
+                add_task_message(request, task_state)
+
 
         for obj in processor.locked_objects:
             msg = 'There is already a running action task for this object.'

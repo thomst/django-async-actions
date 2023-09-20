@@ -51,21 +51,34 @@ class Processor:
         lock_id = Lock.objects.get_lock(checksum)
         return (lock_id,) if lock_id else None
 
-    def _get_task_state(self, obj, signature):
+    def _get_task_states(self, obj, signature):
         """
-        Try to get a lock for the object.
+        Create :class:`~.models.TaskState` instance for a signature or for all
+        signatures of a :class:`~celery.canvas.chain`.
+
+        :param obj: object to run the action task with
+        :type obj: :class:`~django.db.models.Model`
+        :param signature: signature or chain
+        :type signature: :class:`~celery.canvas.Signature` or :class:`~celery.canvas.chain`
+        :return list of :class:`~.models.TaskState`: list of TaskState instances
         """
         content_type = ContentType.objects.get_for_model(type(obj))
-        params = dict(
-            ctype=content_type,
-            obj_id=obj.pk,
-            task_id=signature.id,
-            task_name=signature.task,
-            status=states.PENDING
-        )
-        task_state = ActionTaskState(**params)
-        task_state.save()
-        return task_state
+        task_states = list()
+        # Loop over the signatures of a chain or the signature itself if it is a
+        # single one.
+        signatures = getattr(signature, 'tasks', [signature])
+        for signature in signatures:
+            params = dict(
+                ctype=content_type,
+                obj_id=obj.pk,
+                task_id=signature.id,
+                task_name=signature.task,
+                status=states.PENDING
+            )
+            task_state = ActionTaskState(**params)
+            task_state.save()
+            task_states.append(task_state)
+        return task_states
 
     def _get_signature(self, *lock_ids):
         """
@@ -95,7 +108,7 @@ class Processor:
             lock_ids = self._get_locks(obj)
             if lock_ids:
                 signature = self._get_signature(*lock_ids)
-                self._task_states.append(self._get_task_state(obj, signature))
+                self._task_states.append(self._get_task_states(obj, signature))
                 signatures.append(signature)
             else:
                 self._locked_objects.append(obj)
@@ -124,8 +137,9 @@ class Processor:
     @property
     def task_states(self):
         """
-        :class:`.models.ActionTaskResult` instances we've created. Populated by
-        :meth:`.run` method.
+        Nested list of :class:`.models.ActionTaskState` instances. If not
+        working with a :class:`~celery.canvas.chain` the inner lists have only a
+        single item. Populated by :meth:`.run` method.
         """
         return self._task_states
 
