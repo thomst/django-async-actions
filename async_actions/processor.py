@@ -106,7 +106,7 @@ class Processor:
             except OccupiedLockException:
                 self._locked_objects.append(obj)
             else:
-                signature = self._get_signature()
+                signature = self._get_signature(*lock_ids)
                 signatures.append(signature)
 
                 # For primitives we loop over the tasks attribute of the
