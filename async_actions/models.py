@@ -5,6 +5,7 @@ from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
 from django.db import models
 from django.utils.translation import gettext_lazy as _
+from .exceptions import OccupiedLockException
 
 
 class ActionTaskState(TaskResult):
@@ -67,10 +68,14 @@ class LockManager(models.Manager):
         _summary_
 
         :param int lock_id: _description_
-        :return int or None: lock_id if the lock were created. Else None.
+        :return int: lock_id
+        :raise OccupiedLockException: If the lock couldn't be achieved.
         """
         lock, created = self.get_or_create(checksum=int(lock_id))
-        return lock.checksum if created else None
+        if not created:
+            raise OccupiedLockException
+        else:
+            return lock.checksum
 
     def release_lock(self, lock_id):
         """

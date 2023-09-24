@@ -46,12 +46,13 @@ class Processor:
         lock-ids or None if a lock couldn't be preserved.
 
         :return tuple: tuple of lock-ids
+        :raise OccupiedLockException: If a lock couldn't be achieved.
         """
         checksum = hash((obj.id, type(obj).__name__, type(obj.__module__)))
         lock_id = Lock.objects.get_lock(checksum)
-        return (lock_id,) if lock_id else None
+        return (lock_id,)
 
-    def _get_task_states(self, obj, signature):
+    def _get_task_state(self, obj, signature):
         """
         Create :class:`~.models.TaskState` instance for a signature or for all
         signatures of a :class:`~celery.canvas.chain`.
@@ -63,55 +64,59 @@ class Processor:
         :return list of :class:`~.models.TaskState`: list of TaskState instances
         """
         content_type = ContentType.objects.get_for_model(type(obj))
-        task_states = list()
-        # Loop over the signatures of a chain or the signature itself if it is a
-        # single one.
-        signatures = getattr(signature, 'tasks', [signature])
-        for signature in signatures:
-            params = dict(
-                ctype=content_type,
-                obj_id=obj.pk,
-                task_id=signature.id,
-                task_name=signature.task,
-                status=states.PENDING
-            )
-            task_state = ActionTaskState(**params)
-            task_state.save()
-            task_states.append(task_state)
-        return task_states
+        params = dict(
+            ctype=content_type,
+            obj_id=obj.pk,
+            task_id=signature.id,
+            task_name=signature.task,
+            status=states.PENDING
+        )
+        task_state = ActionTaskState(**params)
+        task_state.save()
+        return task_state
 
     def _get_signature(self, *lock_ids):
         """
-        Create an immutable :class:`~celery.canvas.Signature. See also
-        `https://docs.celeryq.dev/en/stable/userguide/canvas.html#immutability`_.
-        The object will be resolved into its content-type-id and object-id
-        before passed as argument to the signature.
+        _summary_
 
-        :param obj: the object to run the session with
-        :type obj: :class:`~django.db.models.Model`
-        :return: celery signature
-        :rtype: :class:`~celery.canvas.Signature
+        :return _type_: _description_
         """
-        # Let's setup our signature by adding arguments and callbacks.
-        # We now use freeze to have a valid id and use it with the
-        # release-lock-callback that we subsequently add to the signature.
-        sig = self._sig.clone(kwargs=self._runtime_data)
+        # Clone the original signature and use freeze with it to have a valid
+        # task-id.
+        sig = self._sig.clone()
         sig.freeze()
+
+        # If a lock was setup we equip the signature with release callbacks.
         if lock_ids:
             sig.set(link=release_locks.si(*lock_ids))
             sig.set(link_error=release_locks.si(*lock_ids))
+
         return sig
 
     def _get_signatures(self):
+        """
+        _summary_
+
+        :return _type_: _description_
+        """
         signatures = list()
         for obj in self._queryset:
-            lock_ids = self._get_locks(obj)
-            if lock_ids:
-                signature = self._get_signature(*lock_ids)
-                self._task_states.append(self._get_task_states(obj, signature))
-                signatures.append(signature)
-            else:
+            try:
+                lock_ids = self._get_locks(obj)
+            except OccupiedLockException:
                 self._locked_objects.append(obj)
+            else:
+                signature = self._get_signature()
+                signatures.append(signature)
+
+                # For primitives we loop over the tasks attribute of the
+                # signature. Otherwise we simply use the signature in a
+                # one-item-list.
+                task_states = list()
+                for sig in getattr(signature, 'tasks', [signature]):
+                    task_states.append(self._get_task_state(obj, sig))
+                self._task_states.append(task_states)
+
         return signatures
 
     def _get_workflow(self):
@@ -178,6 +183,6 @@ class Processor:
 
         :return :class:`~celery.result.AsyncResult: result object
         """
-        self._results = self.workflow.delay()
+        self._results = self.workflow.delay(**self._runtime_data)
         self._results.save()
         return self._results
