@@ -48,7 +48,7 @@ class Processor:
         :return tuple: tuple of lock-ids
         :raise OccupiedLockException: If a lock couldn't be achieved.
         """
-        checksum = hash((obj.id, type(obj).__name__, type(obj.__module__)))
+        checksum = hash((obj.id, type(obj).__name__, type(obj).__module__))
         lock_id = Lock.objects.get_lock(checksum)
         return (lock_id,)
 
