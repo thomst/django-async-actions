@@ -13,17 +13,24 @@ class ActionTask(Task):
     #: We update the result state ourselves.
     ignore_result = False
     track_started = True
+    _state = None
 
+    def setup(self, parent=None):
+        """
+        _summary_
 
-    def __init__(self):
-        super().__init__()
-        self._state = None
+        :param :class:`~.ActionTask` parent: calling action task
+        """
+        if parent:
+            self._state = parent._state
+        else:
+            self._state = ActionTaskState.objects.get(task_id=self.request.id)
 
     def before_start(self, task_id, args, kwargs):
         """
         _summary_
         """
-        self._state = ActionTaskState.objects.get(task_id=self.request.id)
+        self.setup()
 
     @property
     def obj(self):
