@@ -75,7 +75,7 @@ class Processor:
         task_state.save()
         return task_state
 
-    def _get_signature(self, *lock_ids):
+    def _get_signature(self, lock_ids):
         """
         _summary_
 
@@ -106,7 +106,7 @@ class Processor:
             except OccupiedLockException:
                 self._locked_objects.append(obj)
             else:
-                signature = self._get_signature(*lock_ids)
+                signature = self._get_signature(lock_ids)
                 signatures.append(signature)
 
                 # For primitives we loop over the tasks attribute of the
