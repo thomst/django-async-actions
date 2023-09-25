@@ -1,4 +1,3 @@
-from kombu.serialization import loads
 from django_celery_results.models import TaskResult
 from item_messages.constants import DEFAULT_TAGS
 from django.contrib.contenttypes.fields import GenericForeignKey
