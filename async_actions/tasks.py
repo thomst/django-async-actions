@@ -3,9 +3,11 @@ from celery import Task
 from celery import shared_task
 from .models import ActionTaskState
 from .models import Lock
+from .locks import get_object_lock
+from .locks import release_locks
 
 
-class ActionTask(Task):
+class BaseActionTaskMixin:
     """
     _summary_
     """
@@ -52,9 +54,38 @@ class ActionTask(Task):
         self.notes.create(note=note, level=level)
 
 
-# To be sure not to use the ActionTask class here - even if configured globally
-# as the class to be used - we set the base parameter explicitly.
+class LockedActionTaskMixin:
+    """
+    _summary_
+
+    :param _type_ ActionTask: _description_
+    """
+
+    #: List of lock-ids.
+    _lock_ids = None
+
+    def setup(self, parent=None):
+        super().setup(parent)
+        if not parent:
+            self._lock_ids = [get_object_lock(self._state.obj)]
+
+    def after_return(self, status, retval, task_id, args, kwargs, einfo):
+        super().after_return(status, retval, task_id, args, kwargs, einfo)
+        release_locks(*self._lock_ids)
+
+
+class ActionTask(BaseActionTaskMixin, Task):
+    """
+    _summary_
+    """
+
+
+class LockedActionTask(LockedActionTaskMixin, ActionTask):
+    """
+    _summary_
+    """
+
+
 @shared_task(base=Task)
-def release_locks(*lock_ids):
-    for lock_id in lock_ids:
-        Lock.objects.get(checksum=int(lock_id)).delete()
+def release_locks_task(*lock_ids):
+    release_locks(*lock_ids)
