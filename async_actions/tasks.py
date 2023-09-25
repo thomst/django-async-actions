@@ -10,7 +10,6 @@ class ActionTask(Task):
     _summary_
     """
 
-    #: We update the result state ourselves.
     ignore_result = False
     track_started = True
     _state = None
