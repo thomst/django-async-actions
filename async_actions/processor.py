@@ -127,7 +127,7 @@ class Processor:
         signatures we got. By overwriting this method it is possible to build
         more advanced workflows.
 
-        :return :class:`~celery.canvas.Signature: celery workflow
+        :return :class:`~celery.canvas.group`: celery workflow
         """
         return group(*self.signatures)
 
