@@ -17,7 +17,9 @@ class ActionTask(Task):
 
     def setup(self, state=None):
         """
-        _summary_
+        It is possible to call the setup explicitly with an existing
+        :class:`~.models.ActionTaskState`. This allows you to call an action
+        task from within another and share its action task state.
 
         :param :class:`~.models.ActionTaskState` state: action task state
         """
