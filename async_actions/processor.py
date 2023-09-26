@@ -75,7 +75,7 @@ class Processor:
         task_state.save()
         return task_state
 
-    def _get_signature(self, lock_ids):
+    def _get_signature(self, locks):
         """
         _summary_
 
@@ -87,9 +87,9 @@ class Processor:
         sig.freeze()
 
         # If a lock was setup we equip the signature with release callbacks.
-        if lock_ids:
-            sig.set(link=release_locks.si(*lock_ids))
-            sig.set(link_error=release_locks.si(*lock_ids))
+        if locks:
+            sig.set(link=release_locks.si(*locks))
+            sig.set(link_error=release_locks.si(*locks))
 
         return sig
 
@@ -102,11 +102,11 @@ class Processor:
         signatures = list()
         for obj in self._queryset:
             try:
-                lock_ids = self._get_locks(obj)
+                locks = self._get_locks(obj)
             except OccupiedLockException:
                 self._locked_objects.append(obj)
             else:
-                signature = self._get_signature(lock_ids)
+                signature = self._get_signature(locks)
                 signatures.append(signature)
 
                 # For primitives we loop over the tasks attribute of the
