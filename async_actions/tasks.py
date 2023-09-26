@@ -70,7 +70,8 @@ class ObjectLockActionTaskMixin:
 
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
         super().after_return(status, retval, task_id, args, kwargs, einfo)
-        release_locks(*self._locks)
+        if self._locks:
+            release_locks(*self._locks)
 
 
 class ObjectLockActionTask(ObjectLockActionTaskMixin, ActionTask):
