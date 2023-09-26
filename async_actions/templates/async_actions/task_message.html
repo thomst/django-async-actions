@@ -9,9 +9,8 @@
                 {% for note in task_state.notes.all %}
                     <li class="note.level">{{note.note}}</li>
                 {% endfor %}
-                {% if meta.exc_message %}
+                {% if task_state.traceback %}
                     <li class="error">
-                        Exception was: {{meta.exc_message}}
                         <pre>{{task_state.traceback}}</pre>
                     </li>
                 {% endif %}
