@@ -3,7 +3,7 @@ from celery import group
 from celery import states
 from django.contrib.contenttypes.models import ContentType
 from .models import ActionTaskState
-from .models import Lock
+from .locks import get_object_lock
 from .tasks import release_locks
 from .exceptions import OccupiedLockException
 
@@ -43,15 +43,15 @@ class Processor:
 
     def _get_locks(self, obj):
         """
-        Get locks for an object and related resources. Return a tuple of
-        lock-ids or None if a lock couldn't be preserved.
+        While supporting locking by design this class don't use any locking
+        mechanism on its own. Locking could be implemented in child classes by
+        overwriting this method.
 
-        :return tuple: tuple of lock-ids
-        :raise OccupiedLockException: If a lock couldn't be achieved.
+        :param obj: object to run the action task with
+        :type obj: :class:`~django.db.models.Model`
+        :return :class:`builtins.NoneType`: None
         """
-        checksum = hash((obj.id, type(obj).__name__, type(obj).__module__))
-        lock_id = Lock.objects.get_lock(checksum)
-        return (lock_id,)
+        return None
 
     def _get_task_state(self, obj, signature):
         """
@@ -187,3 +187,27 @@ class Processor:
         self._results = self.workflow.delay(**self._runtime_data)
         self._results.save()
         return self._results
+
+
+class ObjectLockProcessorMixin:
+    """
+    _summary_
+    """
+    def _get_locks(self, obj):
+        """
+        Get locks for an object and related resources. Return a tuple of
+        lock-ids or None if a lock couldn't be preserved.
+
+        :param obj: object to run the action task with
+        :type obj: :class:`~django.db.models.Model`
+        :return tuple: tuple of lock-ids
+        :raise OccupiedLockException: If a lock couldn't be achieved.
+        """
+        lock = get_object_lock(obj)
+        return (lock,)
+
+
+class ObjectLockProcessor(ObjectLockProcessorMixin, Processor):
+    """
+    _summary_
+    """
