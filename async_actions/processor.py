@@ -5,6 +5,7 @@ from django.contrib.contenttypes.models import ContentType
 from .models import ActionTaskState
 from .models import Lock
 from .tasks import release_locks
+from .exceptions import OccupiedLockException
 
 
 class Processor:
