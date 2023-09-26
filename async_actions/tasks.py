@@ -15,14 +15,14 @@ class ActionTask(Task):
     track_started = True
     _state = None
 
-    def setup(self, parent=None):
+    def setup(self, state=None):
         """
         _summary_
 
-        :param :class:`~.ActionTask` parent: calling action task
+        :param :class:`~.models.ActionTaskState` state: action task state
         """
-        if parent:
-            self._state = parent._state
+        if state:
+            self._state = state
         else:
             self._state = ActionTaskState.objects.get(task_id=self.request.id)
 
@@ -63,9 +63,9 @@ class ObjectLockActionTaskMixin:
     #: List of lock-ids.
     _locks = None
 
-    def setup(self, parent=None):
-        super().setup(parent)
-        if not parent:
+    def setup(self, state=None):
+        super().setup(state)
+        if not state:
             self._locks = [get_object_lock(self._state.obj)]
 
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
