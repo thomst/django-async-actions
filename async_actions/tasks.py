@@ -53,7 +53,7 @@ class ActionTask(Task):
         self.notes.create(note=note, level=level)
 
 
-class LockedActionTaskMixin:
+class ObjectLockActionTaskMixin:
     """
     _summary_
 
@@ -73,7 +73,7 @@ class LockedActionTaskMixin:
         release_locks(*self._locks)
 
 
-class LockedActionTask(LockedActionTaskMixin, ActionTask):
+class ObjectLockActionTask(ObjectLockActionTaskMixin, ActionTask):
     """
     _summary_
     """
