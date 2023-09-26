@@ -2,12 +2,11 @@ from item_messages.constants import INFO
 from celery import Task
 from celery import shared_task
 from .models import ActionTaskState
-from .models import Lock
 from .locks import get_object_lock
 from .locks import release_locks
 
 
-class BaseActionTaskMixin:
+class ActionTask(Task):
     """
     _summary_
     """
@@ -62,22 +61,16 @@ class LockedActionTaskMixin:
     """
 
     #: List of lock-ids.
-    _lock_ids = None
+    _locks = None
 
     def setup(self, parent=None):
         super().setup(parent)
         if not parent:
-            self._lock_ids = [get_object_lock(self._state.obj)]
+            self._locks = [get_object_lock(self._state.obj)]
 
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
         super().after_return(status, retval, task_id, args, kwargs, einfo)
-        release_locks(*self._lock_ids)
-
-
-class ActionTask(BaseActionTaskMixin, Task):
-    """
-    _summary_
-    """
+        release_locks(*self._locks)
 
 
 class LockedActionTask(LockedActionTaskMixin, ActionTask):
