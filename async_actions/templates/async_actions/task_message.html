@@ -1,4 +1,3 @@
-{% load task_message %}
 {% autoescape on %}
     <span class="actiontask {{task_state.status}}" id="{{task_state.task_id}}" data-hash="{{task_state.checksum}}">
         <p>id: {{task_state.task_id}}</p>
