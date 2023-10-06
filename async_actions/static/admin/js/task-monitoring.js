@@ -11,7 +11,8 @@
             this.html = msg;
             this.msg_id = $(msg).attr('id');
             this.task_id = $(msg).data('task_id');
-            this.checksum = $(msg).data('checksum');
+            this.task_status = $(msg).data('task_status');
+            this.note_count = $(msg).data('note_count');
         }
         update() {
             $('#' + this.msg_id).replaceWith(this.html);

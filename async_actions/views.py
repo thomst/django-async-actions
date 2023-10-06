@@ -18,10 +18,11 @@ def update_task_messages(request):
 
     for state in states:
         msg_id = data[state.task_id]['msg_id']
-        checksum = int(data[state.task_id]['checksum'])
+        task_status = data[state.task_id]['task_status']
+        note_count = data[state.task_id]['note_count']
 
-        # If the checksum hasn't changed we skip the state.
-        if state.checksum == checksum:
+        # See if something has changed since rendered the message.
+        if state.status == task_status and state.notes.count() == note_count:
             continue
 
         # Set the task message and build the json response list.

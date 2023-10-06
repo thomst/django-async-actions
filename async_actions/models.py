@@ -16,13 +16,6 @@ class ActionTaskState(TaskResult):
     obj_id = models.PositiveIntegerField()
     obj = GenericForeignKey("ctype", "obj_id")
 
-    @property
-    def checksum(self):
-        """
-        A checksum indicating that an action task changed by status or notes.
-        """
-        return hash((self.status, self.notes.count()))
-
     class Meta:
         indexes = (
             models.Index(fields=["obj_id"]),

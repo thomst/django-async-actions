@@ -29,7 +29,8 @@ def build_task_message(task_state):
 
     extra_data = {
         'task_id': task_state.task_id,
-        'checksum': task_state.checksum
+        'task_status': task_state.status,
+        'note_count': task_state.notes.count(),
     }
     return level, mark_safe(msg), status_tag, extra_data
 
