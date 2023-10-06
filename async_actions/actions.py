@@ -61,20 +61,34 @@ class BaseTaskAction:
         self.run(modeladmin, request, queryset)
 
 
-class TaskAction(BaseTaskAction):
+class FormTaskActionMixin:
     """
     _summary_
     """
+
+    #: List of forms.
     forms = list()
-    """
-    _summary_
-    """
+
+    def _get_forms(self):
+        """
+        _summary_
+
+        :return _type_: _description_
+        """
+        return self.forms
+
     def _get_runtime_data(self):
         """
         _summary_
         """
         # TODO: Get runtime-data from forms.
         return super()._get_runtime_data()
+
+
+class TaskAction(FormTaskActionMixin, BaseTaskAction):
+    """
+    _summary_
+    """
 
 
 def as_action(*args, **options):
