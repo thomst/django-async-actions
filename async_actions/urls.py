@@ -14,9 +14,9 @@ Including another URLconf
     2. Add a URL to urlpatterns:  url(r'^blog/', include('blog.urls'))
 """
 from django.urls import path
-from .views import tasks_by_ids
+from .views import update_task_messages
 
 
 urlpatterns = [
-    path('tasks_by_ids/', tasks_by_ids, name='tasks_by_ids'),
+    path('tasks_by_ids/', update_task_messages, name='tasks_by_ids'),
 ]
