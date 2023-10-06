@@ -5,7 +5,6 @@ from item_messages import add_message
 from item_messages import update_message
 from item_messages import get_messages
 from item_messages import INFO, ERROR
-from .utils import get_message_checksum
 
 
 def build_task_message(task_state):
