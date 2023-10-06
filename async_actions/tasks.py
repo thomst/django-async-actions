@@ -6,7 +6,7 @@ from .locks import get_object_lock
 from .locks import release_locks
 
 
-class ActionTask(Task):
+class ActionTaskMixin:
     """
     _summary_
     """
@@ -55,7 +55,13 @@ class ActionTask(Task):
         self.notes.create(note=note, level=level)
 
 
-class ObjectLockActionTaskMixin:
+class ActionTask(ActionTaskMixin, Task):
+    """
+    _summary_
+    """
+
+
+class LockedActionTaskMixin:
     """
     _summary_
 
@@ -76,7 +82,7 @@ class ObjectLockActionTaskMixin:
             release_locks(*self._locks)
 
 
-class ObjectLockActionTask(ObjectLockActionTaskMixin, ActionTask):
+class LockedActionTask(LockedActionTaskMixin, ActionTask):
     """
     _summary_
     """
