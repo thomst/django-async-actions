@@ -1,4 +1,5 @@
 
+import hashlib
 from .models import Lock
 
 
@@ -10,9 +11,10 @@ def get_object_lock(obj):
     :return tuple: tuple of lock-ids
     :raise OccupiedLockException: if the lock couldn't be achieved
     """
-    lock_id = hash((obj.id, type(obj).__name__, type(obj).__module__))
-    Lock.objects.get_lock(lock_id)
-    return lock_id
+    seed = f'{obj.id}-{type(obj).__name__}-{type(obj).__module__}'
+    hash_ = hashlib.shake_128(seed.encode())
+    lock_id = hash_.hexdigest(12)
+    return Lock.objects.get_lock(lock_id)
 
 
 def release_locks(*lock_ids):
@@ -22,4 +24,4 @@ def release_locks(*lock_ids):
     :param list \*lock_ids: ids of locks to be released
     """
     for lock_id in lock_ids:
-        Lock.objects.get(checksum=int(lock_id)).delete()
+        Lock.objects.get(checksum=lock_id).delete()

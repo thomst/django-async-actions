@@ -70,7 +70,7 @@ class LockManager(models.Manager):
         :return int: lock_id
         :raise OccupiedLockException: If the lock couldn't be achieved.
         """
-        lock, created = self.get_or_create(checksum=int(lock_id))
+        lock, created = self.get_or_create(checksum=lock_id)
         if not created:
             raise OccupiedLockException
         else:
@@ -82,7 +82,7 @@ class LockManager(models.Manager):
 
         :param int lock_id: _description_
         """
-        self.get(checksum=int(lock_id)).delete()
+        self.get(checksum=lock_id).delete()
 
 
 class Lock(models.Model):
@@ -92,5 +92,5 @@ class Lock(models.Model):
     # TODO: Using https://github.com/nshafer/django-hashid-field/ might be a
     more reliable alternative.
     """
-    checksum = models.BigIntegerField('Lock-checksum', unique=True)
+    checksum = models.CharField('Checksum', max_length=24, unique=True)
     objects = LockManager()
