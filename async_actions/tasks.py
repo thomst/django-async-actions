@@ -6,7 +6,7 @@ from .locks import get_locks as get_locks_
 from .locks import release_locks as release_locks_
 
 
-class ActionTaskMixin:
+class ActionTask(Task):
     """
     _summary_
     """
@@ -64,12 +64,6 @@ class ActionTaskMixin:
         _summary_
         """
         self.notes.create(note=note, level=level)
-
-
-class ActionTask(ActionTaskMixin, Task):
-    """
-    _summary_
-    """
 
 
 @shared_task(base=ActionTask)
