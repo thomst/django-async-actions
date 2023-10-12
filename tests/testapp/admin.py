@@ -7,6 +7,7 @@ from .tasks import test_task
 from .tasks import task_with_arg
 from .tasks import task_with_kwargs
 from .tasks import task_that_fails
+from .tasks import test_chain
 
 
 @admin.register(TestModel)
@@ -17,5 +18,6 @@ class TestModelAdmin(ActionTaskModelAdmin):
         as_action(task_with_arg.s('foobar')),
         as_action(task_with_kwargs.s(foo='bar'), runtime_data=dict(bar='foo')),
         as_action(task_that_fails),
+        as_action(test_chain, name='test-chain', runtime_data=dict(bar='foo')),
         clear_item_messages,
         ]
