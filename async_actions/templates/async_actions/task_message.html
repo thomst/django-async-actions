@@ -1,6 +1,7 @@
+{% load task_message %}
 {% autoescape on %}
     <span class="actiontask {{task_state.status}}">
-        <p>[{{task_state.task_id}}][{{task_state.status}}] {{task_state.task_name}}</p>
+        <p>[{{task_state.task_id}}][{{task_state.status}}] {{task_state.task_name|format_task_name}}</p>
         {% if task_state.notes %}
             <ul class="message-notes">
                 {% for note in task_state.notes.all %}
@@ -8,7 +9,7 @@
                 {% endfor %}
                 {% if task_state.traceback %}
                     <li class="error">
-                        <pre>{{task_state.traceback}}</pre>
+                        <pre>{{task_state.traceback|format_traceback}}</pre>
                     </li>
                 {% endif %}
             </ul>
