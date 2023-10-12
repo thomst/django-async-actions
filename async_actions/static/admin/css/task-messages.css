@@ -1,0 +1,13 @@
+
+
+/* Set neutral background for unfinished tasks. */
+tr:nth-child(odd) + .item-message > td > div.task-waiting,
+tr:nth-child(odd) + .item-message > td > div.task-running
+{
+    background: var(--darkened-bg) !important;
+}
+tr:nth-child(even) + .item-message > td > div.task-waiting,
+tr:nth-child(even) + .item-message > td > div.task-running
+{
+    background: var(--body-bg) !important;
+}
