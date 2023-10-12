@@ -14,19 +14,19 @@ def update_task_messages(request):
     """
     data = json.loads(request.GET['msgs'])
     updated_messages = {}
-    states = ActionTaskState.objects.filter(task_id__in=data.keys())
+    task_states = ActionTaskState.objects.filter(task_id__in=data.keys())
 
-    for state in states:
-        msg_id = data[state.task_id]['msg_id']
-        task_status = data[state.task_id]['task_status']
-        note_count = data[state.task_id]['note_count']
+    for task_state in task_states:
+        msg_id = data[task_state.task_id]['msg_id']
+        task_status = data[task_state.task_id]['task_status']
+        note_count = data[task_state.task_id]['note_count']
 
         # See if something has changed since rendered the message.
-        if state.status == task_status and state.notes.count() == note_count:
+        if task_state.status == task_status and task_state.notes.count() == note_count:
             continue
 
         # Set the task message and build the json response list.
-        msg = update_task_message(request, msg_id, state)
+        msg = update_task_message(request, msg_id, task_state)
         updated_messages[msg.id] = msg.html
 
     return JsonResponse(updated_messages)
