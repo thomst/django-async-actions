@@ -11,3 +11,46 @@ tr:nth-child(even) + .item-message > td > div.task-running
 {
     background: var(--body-bg) !important;
 }
+
+/* Style and position the message notes. */
+tr.item-message ul.message-notes
+{
+    margin-left: 0;
+}
+tr.item-message ul.message-notes > li
+{
+    list-style-type: none;
+    padding: 8px;
+    margin-bottom: 8px;
+    border: 1px solid var(--hairline-color);
+}
+
+/* Set note level specific background-color for notes */
+tr:nth-child(odd) + tr.item-message ul.message-notes > li.info,
+tr:nth-child(odd) + tr.item-message ul.message-notes > li.success
+{
+    background: var(--message-success-bg);
+}
+tr:nth-child(even) + tr.item-message ul.message-notes > li.info,
+tr:nth-child(even) + tr.item-message ul.message-notes > li.success
+{
+    background: var(--message-success-bg-light);
+}
+tr:nth-child(odd) + tr.item-message ul.message-notes > li.warning,
+tr:nth-child(odd) + tr.item-message ul.message-notes > li.debug
+{
+    background: var(--message-warning-bg);
+}
+tr:nth-child(even) + tr.item-message ul.message-notes > li.warning,
+tr:nth-child(even) + tr.item-message ul.message-notes > li.debug
+{
+    background: var(--message-warning-bg-light);
+}
+tr:nth-child(odd) + tr.item-message ul.message-notes > li.error
+{
+    background: var(--message-error-bg);
+}
+tr:nth-child(even) + tr.item-message ul.message-notes > li.error
+{
+    background: var(--message-error-bg-light);
+}

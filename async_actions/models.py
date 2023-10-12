@@ -52,6 +52,10 @@ class ActionTaskNote(models.Model):
         help_text=_("The datetime this message were added."),
     )
 
+    @property
+    def level_tag(self):
+        return DEFAULT_TAGS.get(int(self.level), "")
+
     class Meta:
         ordering = ("action_task", "created_time")
         verbose_name = _("Note")

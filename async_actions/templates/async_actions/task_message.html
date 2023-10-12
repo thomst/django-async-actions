@@ -1,12 +1,10 @@
 {% autoescape on %}
-    <span class="actiontask {{task_state.status}}" id="{{task_state.task_id}}" data-hash="{{task_state.checksum}}">
-        <p>id: {{task_state.task_id}}</p>
-        <p>name: {{task_state.task_name}}</p>
-        <p>state: {{task_state.status}}</p>
+    <span class="actiontask {{task_state.status}}">
+        <p>[{{task_state.task_id}}][{{task_state.status}}] {{task_state.task_name}}</p>
         {% if task_state.notes %}
-            <ul>
+            <ul class="message-notes">
                 {% for note in task_state.notes.all %}
-                    <li class="note.level">{{note.note}}</li>
+                    <li class="{{note.level_tag}}">{{note.note}}</li>
                 {% endfor %}
                 {% if task_state.traceback %}
                     <li class="error">
