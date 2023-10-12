@@ -1,6 +1,5 @@
 from celery.canvas import Signature
 from celery.app.task import Task
-from item_messages import add_message, ERROR
 from .messages import add_task_message
 from .settings import ASYNC_ACTIONS_PROCESSOR_CLASS
 
