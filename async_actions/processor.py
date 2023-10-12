@@ -3,55 +3,43 @@ from celery import group
 from celery import states
 from django.contrib.contenttypes.models import ContentType
 from .models import ActionTaskState
-from .locks import get_object_lock
+from .locks import get_object_checksum
+from .tasks import get_locks
 from .tasks import release_locks
-from .exceptions import OccupiedLockException
 
 
 class Processor:
     """
-    A processor builds a celery workflow for a specific
+        A processor builds a celery workflow for a specific
     :class:`~.task.ActionTask` and queryset and launches this workflow.
-    Therefore it iterates the queryset and does the following for each object:
 
-    * Check if there is not already an action-task running for the given object.
-    * Create a :class:`~celery.canvas.Signature` from the task passing the
-      object and runtime data as arguments.
-    * Wrap those signatures together to a `celery workflow
-      <https://docs.celeryq.dev/en/stable/userguide/canvas.html>`_.
-
-    :param session_class: the session class to be processed
-    :type session_class: :class:`~.sessions.BaseSession`
-    :param user: django user that initiated the session processing
-    :type user: :class:`~django.contrib.auth.models.User`
-    :param queryset: the queryset to be processed
-    :type queryset: :class:`~django.db.models.query.QuerySet`
-    :param runtime_data: data to be passed to the
-        :meth:`.sessions.BaseSession.run` method of each session
-    :type runtime_data: any serialize able object, probably a dict
+    :param _type_ queryset: _description_
+    :param _type_ sig: _description_
+    :param _type_ runtime_data: _description_, defaults to None
+    :param bool inner_lock: _description_, defaults to True
+    :param bool outer_lock: _description_, defaults to False
     """
 
-    def __init__(self, queryset, sig, runtime_data=None):
+    # TODO: Overwork inner and outer lock api.
+    def __init__(self, queryset, sig, runtime_data=None, inner_lock=True, outer_lock=False):
         self._sig = sig
         self._queryset = queryset
         self._runtime_data = runtime_data or dict()
+        self._inner_lock = inner_lock
+        self._outer_lock = outer_lock
         self._results = list()
         self._task_states = list()
-        self._locked_objects = list()
         self._signatures = None
         self._workflow = None
 
     def _get_locks(self, obj):
         """
-        While supporting locking by design this class don't use any locking
-        mechanism on its own. Locking could be implemented in child classes by
-        overwriting this method.
+        _summary_
 
-        :param obj: object to run the action task with
-        :type obj: :class:`~django.db.models.Model`
-        :return :class:`builtins.NoneType`: None
+        :param _type_ obj: _description_
         """
-        return None
+        lock_id = get_object_checksum(obj)
+        return [lock_id]
 
     def _get_task_state(self, obj, signature):
         """
@@ -73,24 +61,31 @@ class Processor:
             status=states.PENDING
         )
         task_state = ActionTaskState(**params)
-        task_state.save()
         return task_state
 
-    def _get_signature(self, locks):
+    def _get_signature(self, obj):
         """
         _summary_
 
         :return _type_: _description_
         """
-        # Clone the original signature and use freeze with it to have a valid
-        # task-id.
-        sig = self._sig.clone()
-        sig.freeze()
+        # Clone original signature and add runtime data as kwargs.
+        # FIXME: sig.clone(kwargs=self._runtime_data) does not work for chained
+        # tasks. See: https://github.com/celery/celery/issues/5193.
+        sig = self._sig.clone(kwargs=self._runtime_data)
 
-        # If a lock was setup we equip the signature with release callbacks.
-        if locks:
-            sig.set(link=release_locks.si(*locks))
-            sig.set(link_error=release_locks.si(*locks))
+        # Pass the lock ids as headers and let the task handle the locks.
+        if self._inner_lock:
+            lock_ids = self._get_locks(obj)
+            sig = sig.clone(headers={'lock_ids': lock_ids})
+
+        # Chain a get_locks task with the original signature and equip the chain
+        # with a release_locks task as callback.
+        elif self._outer_lock:
+            lock_ids = self._get_locks(obj)
+            sig = get_locks.si(*lock_ids) | sig
+            sig.set(link=release_locks.si(*lock_ids))
+            sig.set(link_error=release_locks.si(*lock_ids))
 
         return sig
 
@@ -102,21 +97,19 @@ class Processor:
         """
         signatures = list()
         for obj in self._queryset:
-            try:
-                locks = self._get_locks(obj)
-            except OccupiedLockException:
-                self._locked_objects.append(obj)
-            else:
-                signature = self._get_signature(locks)
-                signatures.append(signature)
+            signature = self._get_signature(obj)
+            signature.freeze()
+            signatures.append(signature)
 
-                # For primitives we loop over the tasks attribute of the
-                # signature. Otherwise we simply use the signature in a
-                # one-item-list.
-                task_states = list()
-                for sig in getattr(signature, 'tasks', [signature]):
-                    task_states.append(self._get_task_state(obj, sig))
-                self._task_states.append(task_states)
+            # For primitives we loop over the tasks attribute of the
+            # signature. Otherwise we simply use the signature in a
+            # one-item-list.
+            task_states = list()
+            for sig in getattr(signature, 'tasks', [signature]):
+                task_state = self._get_task_state(obj, sig)
+                task_state.save()
+                task_states.append(task_state)
+            self._task_states.append(task_states)
 
         return signatures
 
@@ -132,6 +125,7 @@ class Processor:
         """
         return group(*self.signatures)
 
+    # FIXME: Do we need results property?
     @property
     def results(self):
         """
@@ -149,14 +143,7 @@ class Processor:
         """
         return self._task_states
 
-    @property
-    def locked_objects(self):
-        """
-        :class:`.models.ActionTaskResult` instances that were locked. Populated
-        by :meth:`.run` method.
-        """
-        return self._locked_objects
-
+    # FIXME: Do we need signatures and workflow properties?
     @property
     def signatures(self):
         """
@@ -184,30 +171,10 @@ class Processor:
 
         :return :class:`~celery.result.AsyncResult: result object
         """
-        self._results = self.workflow.delay(**self._runtime_data)
+        # FIXME: Do we want to use runtime-data as positional argument for
+        # better chain support:
+        # args = [self._runtime_data] if self._runtime_data else []
+        # self._results = self.workflow.delay(*args)
+        self._results = self.workflow.delay()
         self._results.save()
         return self._results
-
-
-class ObjectLockProcessorMixin:
-    """
-    _summary_
-    """
-    def _get_locks(self, obj):
-        """
-        Get locks for an object and related resources. Return a tuple of
-        lock-ids or None if a lock couldn't be preserved.
-
-        :param obj: object to run the action task with
-        :type obj: :class:`~django.db.models.Model`
-        :return tuple: tuple of lock-ids
-        :raise OccupiedLockException: If a lock couldn't be achieved.
-        """
-        lock = get_object_lock(obj)
-        return (lock,)
-
-
-class ObjectLockProcessor(ObjectLockProcessorMixin, Processor):
-    """
-    _summary_
-    """

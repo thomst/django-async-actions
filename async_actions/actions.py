@@ -11,10 +11,15 @@ class BaseTaskAction:
     """
     _PROCESSOR_CLS = None
 
-    def __init__(self, sig=None, processor_cls=None, name=None, description=None, permissions=None, runtime_data=None):
+    # TODO: Is there are elegant way to distinct action class params from
+    # processor class params?
+    def __init__(self, sig=None, processor_cls=None, name=None, description=None,
+                 permissions=None, runtime_data=None, inner_lock=True, outer_lock=False):
         self._sig = sig
         self._processor_cls = processor_cls or self._PROCESSOR_CLS or ASYNC_ACTIONS_PROCESSOR_CLASS
         self._runtime_data = runtime_data or dict()
+        self._inner_lock = inner_lock
+        self._outer_lock = outer_lock
         self._name = name
         self.short_description = description or f'run {self.__name__}'
         if permissions:
@@ -39,16 +44,13 @@ class BaseTaskAction:
         :param _type_ queryset: _description_
         """
         runtime_data = self._get_runtime_data()
-        processor = self._processor_cls(queryset, self._sig, runtime_data)
+        processor = self._processor_cls(queryset, self._sig, runtime_data,
+                                        self._inner_lock, self._outer_lock)
         processor.run()
 
         for task_states in processor.task_states:
             for task_state in task_states:
                 add_task_message(request, task_state)
-
-        for obj in processor.locked_objects:
-            msg = 'There is already a running action task for this object.'
-            add_message(request, ERROR, obj, msg)
 
     def __call__(self, modeladmin, request, queryset):
         """

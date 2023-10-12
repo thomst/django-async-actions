@@ -1,20 +1,31 @@
 
 import hashlib
+from django.db import transaction
 from .models import Lock
 
 
-def get_object_lock(obj):
+def get_object_checksum(obj):
     """
-    Set one or multiple locks for a :class:`~django.db.models.Model` instance.
+    _summary_
 
-    :param :class:`~django.db.models.Model` obj: any kind of Model instance
-    :return tuple: tuple of lock-ids
-    :raise OccupiedLockException: if the lock couldn't be achieved
+    :param _type_ obj: _description_
     """
     seed = f'{obj.id}-{type(obj).__name__}-{type(obj).__module__}'
     hash_ = hashlib.shake_128(seed.encode())
-    lock_id = hash_.hexdigest(12)
-    return Lock.objects.get_lock(lock_id)
+    return hash_.hexdigest(12)
+
+
+@transaction.atomic
+def get_locks(*lock_ids):
+    """
+    _summary_
+
+    :return _type_: _description_
+    """
+    locks = []
+    for lock_id in lock_ids:
+        locks.append(Lock.objects.get_lock(lock_id))
+    return locks
 
 
 def release_locks(*lock_ids):

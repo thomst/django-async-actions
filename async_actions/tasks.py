@@ -2,8 +2,8 @@ from item_messages.constants import INFO
 from celery import Task
 from celery import shared_task
 from .models import ActionTaskState
-from .locks import get_object_lock
-from .locks import release_locks
+from .locks import get_locks as get_locks_
+from .locks import release_locks as release_locks_
 
 
 class ActionTaskMixin:
@@ -14,6 +14,13 @@ class ActionTaskMixin:
     ignore_result = False
     track_started = True
     _state = None
+
+    def before_start(self, task_id, args, kwargs):
+        """
+        _summary_
+        """
+        super().before_start(task_id, args, kwargs)
+        self.setup()
 
     def setup(self, state=None):
         """
@@ -28,11 +35,15 @@ class ActionTaskMixin:
         else:
             self._state = ActionTaskState.objects.get(task_id=self.request.id)
 
-    def before_start(self, task_id, args, kwargs):
-        """
-        _summary_
-        """
-        self.setup()
+        self._locks = None
+        if self.request.headers and'lock_ids' in self.request.headers:
+            self._locks = get_locks_(*self.request.headers['lock_ids'])
+
+    def after_return(self, status, retval, task_id, args, kwargs, einfo):
+        super().after_return(status, retval, task_id, args, kwargs, einfo)
+
+        if self._locks:
+            release_locks_(*self._locks)
 
     @property
     def obj(self):
@@ -61,33 +72,11 @@ class ActionTask(ActionTaskMixin, Task):
     """
 
 
-class LockedActionTaskMixin:
-    """
-    _summary_
-
-    :param _type_ ActionTask: _description_
-    """
-
-    #: List of lock-ids.
-    _locks = None
-
-    def setup(self, state=None):
-        super().setup(state)
-        if not state:
-            self._locks = [get_object_lock(self._state.obj)]
-
-    def after_return(self, status, retval, task_id, args, kwargs, einfo):
-        super().after_return(status, retval, task_id, args, kwargs, einfo)
-        if self._locks:
-            release_locks(*self._locks)
-
-
-class LockedActionTask(LockedActionTaskMixin, ActionTask):
-    """
-    _summary_
-    """
+@shared_task(base=ActionTask)
+def get_locks(*lock_ids):
+    get_locks_(*lock_ids)
 
 
 @shared_task(base=Task)
-def release_locks_task(*lock_ids):
-    release_locks(*lock_ids)
+def release_locks(*lock_ids):
+    release_locks_(*lock_ids)
