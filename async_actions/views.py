@@ -1,4 +1,5 @@
 import json
+from celery import states
 from django.http import JsonResponse
 from django.views.decorators.http import require_GET
 from django.contrib.auth.decorators import permission_required
@@ -22,7 +23,11 @@ def update_task_messages(request):
         note_count = data[task_state.task_id]['note_count']
 
         # See if something has changed since rendered the message.
-        if task_state.status == task_status and task_state.notes.count() == note_count:
+        # FIXME: Be more specific for RETRY states. Maybe use a checksum routine
+        # after all to be able to implement a more complex logic.
+        if (not task_state.status == states.RETRY and
+            task_state.status == task_status and
+            task_state.notes.count() == note_count):
             continue
 
         # Set the task message and build the json response list.
