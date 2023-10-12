@@ -2,18 +2,18 @@ from celery.canvas import Signature
 from celery.app.task import Task
 from item_messages import add_message, ERROR
 from .messages import add_task_message
-from .processor import Processor
+from .settings import ASYNC_ACTIONS_PROCESSOR_CLASS
 
 
 class BaseTaskAction:
     """
     Base class for admin actions running a session.
     """
-    _PROCESSOR_CLS = Processor
+    _PROCESSOR_CLS = None
 
     def __init__(self, sig=None, processor_cls=None, name=None, description=None, permissions=None, runtime_data=None):
         self._sig = sig
-        self._processor_cls = processor_cls or self._PROCESSOR_CLS
+        self._processor_cls = processor_cls or self._PROCESSOR_CLS or ASYNC_ACTIONS_PROCESSOR_CLASS
         self._runtime_data = runtime_data or dict()
         self._name = name
         self.short_description = description or f'run {self.__name__}'
