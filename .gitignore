@@ -1,4 +1,5 @@
 __pycache__/
+my.cnf
 .python-version
 .coverage
 .coveralls.yml
