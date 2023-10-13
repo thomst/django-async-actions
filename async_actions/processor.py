@@ -6,6 +6,7 @@ from .models import ActionTaskState
 from .locks import get_object_checksum
 from .tasks import get_locks
 from .tasks import release_locks
+from .tasks import release_locks_on_error
 
 
 class LOCK_MODE:
@@ -94,7 +95,7 @@ class Processor:
             lock_ids = self._get_lock_ids(obj)
             sig = get_locks.si(*lock_ids) | sig
             sig.set(link=release_locks.si(*lock_ids))
-            sig.set(link_error=release_locks.si(*lock_ids))
+            sig.set(link_error=release_locks_on_error.s(*lock_ids))
 
         return sig
 

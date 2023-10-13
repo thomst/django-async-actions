@@ -26,39 +26,37 @@ class ActionTask(Task):
     _state = None
     _locks = None
 
-    def get_locks(self):
-        if self.request.headers and'lock_ids' in self.request.headers:
-            try:
-                self._locks = get_locks_(*self.request.headers['lock_ids'])
-            except OccupiedLockException as exc:
-                if self.locked_retry_backoff:
-                    countdown = get_exponential_backoff_interval(
-                        factor=int(max(1,0, self.locked_retry_backoff)),
-                        retries=self.request.retries,
-                        maximum=self.locked_retry_backoff_max,
-                        full_jitter=self.locked_retry_jitter,
-                    )
-                else:
-                    countdown = self.locked_retry_delay
-                self.retry(
-                    exc=exc,
-                    countdown=countdown,
-                    max_retries=self.locked_max_retries,
+    def get_locks(self, *lock_ids):
+        try:
+            return get_locks_(*lock_ids)
+        except OccupiedLockException as exc:
+            if self.locked_retry_backoff:
+                countdown = get_exponential_backoff_interval(
+                    factor=int(max(1,0, self.locked_retry_backoff)),
+                    retries=self.request.retries,
+                    maximum=self.locked_retry_backoff_max,
+                    full_jitter=self.locked_retry_jitter,
                 )
-        else:
-            self._locks = None
-
-    def release_locks(self):
-        if self._locks:
-            release_locks_(*self._locks)
+            else:
+                countdown = self.locked_retry_delay
+            self.retry(
+                exc=exc,
+                countdown=countdown,
+                max_retries=self.locked_max_retries,
+            )
 
     def before_start(self, task_id, args, kwargs):
         """
         _summary_
         """
-        super().before_start(task_id, args, kwargs)
         self.setup()
-        self.get_locks()
+
+        try:
+            lock_ids = self.request.headers['lock_ids']
+        except (TypeError, KeyError):
+            self._locks = None
+        else:
+            self._locks = self.get_locks(*lock_ids)
 
     def setup(self, state=None):
         """
@@ -74,8 +72,8 @@ class ActionTask(Task):
             self._state = ActionTaskState.objects.get(task_id=self.request.id)
 
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
-        super().after_return(status, retval, task_id, args, kwargs, einfo)
-        self.release_locks()
+        if self._locks:
+            release_locks_(*self._locks)
 
     @property
     def obj(self):
@@ -98,11 +96,21 @@ class ActionTask(Task):
         self.notes.create(note=note, level=level)
 
 
-@shared_task(base=ActionTask)
-def get_locks(*lock_ids):
-    get_locks_(*lock_ids)
+# FIXME: We do not need the task state instance. Only the get_locks method. Use
+# a mixin or somethin.
+@shared_task(bind=True, base=ActionTask)
+def get_locks(self, *lock_ids):
+    self.get_locks(*lock_ids)
 
 
 @shared_task(base=Task)
 def release_locks(*lock_ids):
     release_locks_(*lock_ids)
+
+
+@shared_task(base=Task)
+def release_locks_on_error(request, exc, traceback, *lock_ids):
+    # Do not release locks if the exception was an occupied lock exception. In
+    # this case we have nothing to do here.
+    if not isinstance(exc, OccupiedLockException):
+        release_locks_(*lock_ids)

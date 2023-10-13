@@ -76,7 +76,7 @@ class LockManager(models.Manager):
         """
         lock, created = self.get_or_create(checksum=lock_id)
         if not created:
-            raise OccupiedLockException
+            raise OccupiedLockException(lock_id)
         else:
             return lock.checksum
 
