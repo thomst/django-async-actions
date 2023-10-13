@@ -41,7 +41,7 @@ class Processor:
         self._signatures = None
         self._workflow = None
 
-    def _get_locks(self, obj):
+    def _get_lock_ids(self, obj):
         """
         _summary_
 
@@ -85,13 +85,13 @@ class Processor:
 
         # Pass the lock ids as headers and let the task handle the locks.
         if self._lock_mode == LOCK_MODE.INNER:
-            lock_ids = self._get_locks(obj)
+            lock_ids = self._get_lock_ids(obj)
             sig = sig.clone(headers={'lock_ids': lock_ids})
 
         # Chain a get_locks task with the original signature and equip the chain
         # with a release_locks task as callback.
         elif self._lock_mode == LOCK_MODE.OUTER:
-            lock_ids = self._get_locks(obj)
+            lock_ids = self._get_lock_ids(obj)
             sig = get_locks.si(*lock_ids) | sig
             sig.set(link=release_locks.si(*lock_ids))
             sig.set(link_error=release_locks.si(*lock_ids))
