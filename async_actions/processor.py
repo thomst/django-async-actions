@@ -93,6 +93,9 @@ class Processor:
         # with a release_locks task as callback.
         elif self._lock_mode == LOCK_MODE.OUTER:
             lock_ids = self._get_lock_ids(obj)
+            # Make the signature immutable. Otherwise it would recieve a `None`
+            # as positional argument from the get_locks task.
+            sig.set_immutable(True)
             sig = get_locks.si(*lock_ids) | sig
             sig.set(link=release_locks.si(*lock_ids))
             sig.set(link_error=release_locks_on_error.s(*lock_ids))
