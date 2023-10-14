@@ -13,8 +13,13 @@ class ActionTask(Task):
     _summary_
     """
 
+    #: Results must not be ignored and tracked for started tasks.
     ignore_result = False
     track_started = True
+
+    #: Let the worker know about our occupied lock exception.
+    throws = (OccupiedLockException,)
+
     #: Retry policy for occupied lock exceptions.
     locked_max_retries = 12
     locked_retry_delay = 60
