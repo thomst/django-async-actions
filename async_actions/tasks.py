@@ -3,8 +3,7 @@ from celery import Task
 from celery import shared_task
 from celery.utils.time import get_exponential_backoff_interval
 from .models import ActionTaskState
-from .locks import get_locks as get_locks_
-from .locks import release_locks as release_locks_
+from .models import Lock
 from .exceptions import OccupiedLockException
 
 
@@ -29,11 +28,11 @@ class ActionTask(Task):
 
     #: Be sure there are defaults for some extra task attributes we use.
     _state = None
-    _locks = None
+    _lock_ids = None
 
     def get_locks(self, *lock_ids):
         try:
-            return get_locks_(*lock_ids)
+            return Lock.objects.get_locks(*lock_ids)
         except OccupiedLockException as exc:
             if self.locked_retry_backoff:
                 countdown = get_exponential_backoff_interval(
@@ -60,11 +59,11 @@ class ActionTask(Task):
 
         # Get locks if some lock ids were passed in as header.
         try:
-            lock_ids = self.request.headers['lock_ids']
+            self._lock_ids = self.request.headers['lock_ids']
         except (TypeError, KeyError):
-            self._locks = None
+            self._lock_ids = None
         else:
-            self._locks = self.get_locks(*lock_ids)
+            self.get_locks(*self._lock_ids)
 
     @property
     def state(self):
@@ -91,8 +90,8 @@ class ActionTask(Task):
         return self
 
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
-        if self._locks:
-            release_locks_(*self._locks)
+        if self._lock_ids:
+            Lock.objects.release_locks(*self._lock_ids)
 
     @property
     def obj(self):
@@ -122,7 +121,7 @@ def get_locks(self, *lock_ids):
 
 @shared_task(base=Task)
 def release_locks(*lock_ids):
-    release_locks_(*lock_ids)
+    Lock.objects.release_locks(*lock_ids)
 
 
 @shared_task(base=Task)
@@ -130,4 +129,4 @@ def release_locks_on_error(request, exc, traceback, *lock_ids):
     # Do not release locks if the exception was an occupied lock exception. In
     # this case we have nothing to do here.
     if not isinstance(exc, OccupiedLockException):
-        release_locks_(*lock_ids)
+        Lock.objects.release_locks(*lock_ids)

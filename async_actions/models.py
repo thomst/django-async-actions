@@ -2,6 +2,7 @@ from django_celery_results.models import TaskResult
 from item_messages.constants import DEFAULT_TAGS
 from django.contrib.contenttypes.fields import GenericForeignKey
 from django.contrib.contenttypes.models import ContentType
+from django.db import transaction
 from django.db import models
 from django.utils.translation import gettext_lazy as _
 from .exceptions import OccupiedLockException
@@ -66,27 +67,28 @@ class LockManager(models.Manager):
     """
     _summary_
     """
-    def get_lock(self, lock_id):
-        """
+    @transaction.atomic
+    def get_locks(self, *lock_ids):
+        r"""
         _summary_
 
-        :param int lock_id: _description_
-        :return int: lock_id
-        :raise OccupiedLockException: If the lock couldn't be achieved.
+        :param list \*lock_ids: ids of locks to be released
+        :return _type_: _description_
         """
-        lock, created = self.get_or_create(checksum=lock_id)
-        if not created:
-            raise OccupiedLockException(lock_id)
-        else:
-            return lock.checksum
+        for lock_id in lock_ids:
+            _, created = self.get_or_create(checksum=lock_id)
+            if not created:
+                raise OccupiedLockException(lock_id)
+        return lock_ids
 
-    def release_lock(self, lock_id):
-        """
-        _summary_
+    def release_locks(self, *lock_ids):
+        r"""
+        Release locks by deleting their :class:`~.models.Lock` instances.
 
-        :param int lock_id: _description_
+        :param list \*lock_ids: ids of locks to be released
         """
-        self.get(checksum=lock_id).delete()
+        for lock_id in lock_ids:
+            self.get(checksum=lock_id).delete()
 
 
 class Lock(models.Model):

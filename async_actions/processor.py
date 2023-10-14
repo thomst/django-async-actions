@@ -3,7 +3,7 @@ from celery import group
 from celery import states
 from django.contrib.contenttypes.models import ContentType
 from .models import ActionTaskState
-from .locks import get_object_checksum
+from .utils import get_object_checksum
 from .tasks import get_locks
 from .tasks import release_locks
 from .tasks import release_locks_on_error
