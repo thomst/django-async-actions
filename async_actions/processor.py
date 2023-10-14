@@ -89,8 +89,8 @@ class Processor:
             lock_ids = self._get_lock_ids(obj)
             sig = sig.clone(headers={'lock_ids': lock_ids})
 
-        # Chain a get_locks task with the original signature and equip the chain
-        # with a release_locks task as callback.
+        # Let a get_locks task precede the original signature and equip the
+        # chain with release_locks tasks as callback.
         elif self._lock_mode == LOCK_MODE.OUTER:
             lock_ids = self._get_lock_ids(obj)
             # Make the signature immutable. Otherwise it would recieve a `None`
