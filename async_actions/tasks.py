@@ -54,8 +54,11 @@ class ActionTask(Task):
         """
         _summary_
         """
-        self.setup()
+        # Since Tasks instances might be reused within one worker process we
+        # explicitly set the state to None.
+        self._state = None
 
+        # Get locks if some lock ids were passed in as header.
         try:
             lock_ids = self.request.headers['lock_ids']
         except (TypeError, KeyError):
@@ -63,18 +66,29 @@ class ActionTask(Task):
         else:
             self._locks = self.get_locks(*lock_ids)
 
-    def setup(self, state=None):
+    @property
+    def state(self):
         """
-        It is possible to call the setup explicitly with an existing
-        :class:`~.models.ActionTaskState`. This allows you to call an action
-        task from within another and share its action task state.
+        _summary_
+        """
+        if not self._state:
+            # TODO: Select-related the state object.
+            self._state = ActionTaskState.objects.get(task_id=self.request.id)
+        return self._state
+
+    def run_with(self, state):
+        """
+        To run an action task from within another we pass in the state of the
+        parent task. Calling the task could be chained since we return the task
+        itself::
+
+            mytask.run_with(state_of_parent_task)(*args, **kwargs)
 
         :param :class:`~.models.ActionTaskState` state: action task state
+        :return :class:`~.ActionTask`: the task itself
         """
-        if state:
-            self._state = state
-        else:
-            self._state = ActionTaskState.objects.get(task_id=self.request.id)
+        self._state = state
+        return self
 
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
         if self._locks:
@@ -85,24 +99,22 @@ class ActionTask(Task):
         """
         _summary_
         """
-        return self._state.obj
+        return self.state.obj
 
     @property
     def notes(self):
         """
         _summary_
         """
-        return self._state.notes
+        return self.state.notes
 
     def add_note(self, note, level=INFO):
         """
         _summary_
         """
-        self.notes.create(note=note, level=level)
+        self.state.notes.create(note=note, level=level)
 
 
-# FIXME: We do not need the task state instance. Only the get_locks method. Use
-# a mixin or somethin.
 @shared_task(bind=True, base=ActionTask)
 def get_locks(self, *lock_ids):
     self.get_locks(*lock_ids)
