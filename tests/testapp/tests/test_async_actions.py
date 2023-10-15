@@ -1,9 +1,12 @@
 import json
 import urllib
-import celery
-import item_messages
 from unittest.mock import patch
 from unittest.mock import Mock
+import celery
+from celery.canvas import group
+from celery.canvas import _chain
+from celery.canvas import Signature
+import item_messages
 from item_messages.middleware import ItemMessageMiddleware
 from item_messages import get_messages
 from django.contrib.sessions.middleware import SessionMiddleware
@@ -19,7 +22,11 @@ from async_actions.messages import build_task_message
 from async_actions.messages import add_task_message
 from async_actions.utils import get_task_message_checksum
 from async_actions.views import update_task_messages
+from async_actions.processor import Processor
+from async_actions.processor import LOCK_MODE
 from testapp.models import TestModel
+from testapp.tasks import test_task
+from testapp.tasks import test_chain
 from testapp.utils import create_test_data
 
 
@@ -182,3 +189,54 @@ class ItemMessagesTests(TestCase):
         response = update_task_messages(request)
         messages = json.loads(response.content.decode())
         self.assertIn(msg_id, messages)
+
+    def test_processor(self):
+        # Initialize a processor.
+        queryset = TestModel.objects.all()
+        signature = test_task.si()
+        processor = Processor(queryset, signature)
+        workflow = processor.workflow
+        self.assertIsInstance(workflow, group)
+        self.assertEqual(type(processor.signatures[0]), Signature)
+        task_states = ActionTaskState.objects.all()
+        self.assertEqual(set(task_states), set([l[0] for l in processor.task_states]))
+        self.assertEqual(set(t.task_id for t in task_states), set(s.id for s in processor.signatures))
+
+        # Just for the coverage...
+        with patch.object(processor.workflow, 'delay'):
+            processor.run()
+            processor.results
+
+    def test_processor_with_outer_lock(self):
+        # Initialize a processor with LOCK_MODE.OUTER.
+        queryset = TestModel.objects.all()
+        signature = test_task.si()
+        processor = Processor(queryset, signature, lock_mode=LOCK_MODE.OUTER)
+        workflow = processor.workflow
+        self.assertIsInstance(workflow, group)
+        self.assertEqual(type(processor.signatures[0]), _chain)
+        task_states = ActionTaskState.objects.all()
+        self.assertEqual(set(task_states), set([t for l in processor.task_states for t in l]))
+        self.assertEqual(set(t.task_id for t in task_states), set(t.id for s in processor.signatures for t in s.tasks))
+
+    def test_processor_with_chain(self):
+        # Initialize a processor with a chain as signature.
+        queryset = TestModel.objects.all()
+        processor = Processor(queryset, test_chain)
+        workflow = processor.workflow
+        self.assertIsInstance(workflow, group)
+        self.assertEqual(type(processor.signatures[0]), _chain)
+        task_states = ActionTaskState.objects.all()
+        self.assertEqual(set(task_states), set([t for l in processor.task_states for t in l]))
+        self.assertEqual(set(t.task_id for t in task_states), set(t.id for s in processor.signatures for t in s.tasks))
+
+    def test_processor_with_chain(self):
+        # Initialize a processor with a chain as signature and LOCK_MODE.OUTER.
+        queryset = TestModel.objects.all()
+        processor = Processor(queryset, test_chain, lock_mode=LOCK_MODE.OUTER)
+        workflow = processor.workflow
+        self.assertIsInstance(workflow, group)
+        self.assertEqual(type(processor.signatures[0]), _chain)
+        task_states = ActionTaskState.objects.all()
+        self.assertEqual(set(task_states), set([t for l in processor.task_states for t in l]))
+        self.assertEqual(set(t.task_id for t in task_states), set(t.id for s in processor.signatures for t in s.tasks))
