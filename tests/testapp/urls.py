@@ -20,5 +20,5 @@ from django.conf.urls import include
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('async_actions/', (include("async_actions.urls"))),
+    path('async_actions/', include("async_actions.urls")),
 ]
