@@ -19,24 +19,17 @@ def build_task_message(task_state):
     else:
         level = INFO
 
-    # Set processing status.
-    if task_state.status == states.PENDING:
-        status_tag = 'task-waiting'
-    elif task_state.status in states.UNREADY_STATES:
-        status_tag = 'task-running'
-    else:
-        status_tag = 'task-ready'
-
+    # Set processing status and extra data.
     extra_data = {
         'task_id': task_state.task_id,
         'task_status': task_state.status,
         'note_count': task_state.notes.count(),
     }
-    return level, mark_safe(msg), status_tag, extra_data
+    return level, mark_safe(msg), task_state.status_tag, extra_data
 
 
 def add_task_message(request, task_state):
-    add_message(request, task_state.obj, *build_task_message(task_state))
+    return add_message(request, task_state.obj, *build_task_message(task_state))
 
 
 def update_task_message(request, msg_id, task_state):

@@ -1,3 +1,4 @@
+from celery import states
 from django_celery_results.models import TaskResult
 from item_messages.constants import DEFAULT_TAGS
 from django.contrib.contenttypes.fields import GenericForeignKey
@@ -16,6 +17,17 @@ class ActionTaskState(TaskResult):
     ctype = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     obj_id = models.PositiveIntegerField()
     obj = GenericForeignKey("ctype", "obj_id")
+
+    # TODO: Define a states module with appropriate constants to work with
+    # status-tags.
+    @property
+    def status_tag(self):
+        if self.status == states.PENDING:
+            return 'task-waiting'
+        elif self.status in states.UNREADY_STATES:
+            return 'task-running'
+        else:
+            return 'task-ready'
 
     class Meta:
         indexes = (
