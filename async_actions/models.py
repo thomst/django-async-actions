@@ -87,11 +87,14 @@ class LockManager(models.Manager):
         :param list \*lock_ids: ids of locks to be released
         :return _type_: _description_
         """
+        locks = []
         for lock_id in lock_ids:
-            _, created = self.get_or_create(checksum=lock_id)
+            lock, created = self.get_or_create(checksum=lock_id)
             if not created:
                 raise OccupiedLockException(lock_id)
-        return lock_ids
+            else:
+                locks.append(lock)
+        return locks
 
     def release_locks(self, *lock_ids):
         r"""
