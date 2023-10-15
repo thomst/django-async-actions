@@ -5,6 +5,7 @@ from item_messages import add_message
 from item_messages import update_message
 from item_messages import get_messages
 from item_messages import INFO, ERROR
+from .utils import get_task_message_checksum
 
 
 def build_task_message(task_state):
@@ -22,8 +23,7 @@ def build_task_message(task_state):
     # Set processing status and extra data.
     extra_data = {
         'task_id': task_state.task_id,
-        'task_status': task_state.status,
-        'note_count': task_state.notes.count(),
+        'checksum': get_task_message_checksum(task_state),
     }
     return level, mark_safe(msg), task_state.status_tag, extra_data
 

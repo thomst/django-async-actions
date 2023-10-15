@@ -18,5 +18,5 @@ from .views import update_task_messages
 
 
 urlpatterns = [
-    path('tasks_by_ids/', update_task_messages, name='tasks_by_ids'),
+    path('messages/get/', update_task_messages, name='update_task_messages'),
 ]
