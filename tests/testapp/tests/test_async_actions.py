@@ -18,6 +18,9 @@ from django.test import RequestFactory
 from async_actions.models import Lock
 from async_actions.models import ActionTaskState
 from async_actions.tasks import ActionTask
+from async_actions.tasks import get_locks
+from async_actions.tasks import release_locks
+from async_actions.tasks import release_locks_on_error
 from async_actions.exceptions import OccupiedLockException
 from async_actions.messages import build_task_message
 from async_actions.messages import add_task_message
@@ -98,6 +101,27 @@ class ItemMessagesTests(TestCase):
             Lock.objects.get(checksum=lock_ids[0])
         with self.assertRaises(Lock.DoesNotExist):
             Lock.objects.get(checksum=lock_ids[1])
+
+    def test_lock_tasks(self):
+        lock_ids = ['lock_one', 'lock_two']
+        get_locks(*lock_ids)
+        self.assertEqual(Lock.objects.filter(checksum__in=lock_ids).count(), len(lock_ids))
+
+        # Use release_locks task to delete locks.
+        release_locks(*lock_ids)
+        self.assertEqual(Lock.objects.filter(checksum__in=lock_ids).count(), 0)
+
+        # Test release_locks_on_error.
+        get_locks(*lock_ids)
+
+        # Called with an instance of OccupiedLockException the locks shouldn't
+        # be released.
+        release_locks_on_error(Mock(), OccupiedLockException(), Mock(), *lock_ids)
+        self.assertEqual(Lock.objects.filter(checksum__in=lock_ids).count(), len(lock_ids))
+
+        # Called with another Exception they should be released.
+        release_locks_on_error(Mock(), Exception(), Mock(), *lock_ids)
+        self.assertEqual(Lock.objects.filter(checksum__in=lock_ids).count(), 0)
 
     def test_build_task_messages(self):
         task_state = self.create_task_state()
