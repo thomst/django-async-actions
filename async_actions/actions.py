@@ -13,20 +13,29 @@ class BaseTaskAction:
 
     # TODO: Is there are elegant way to distinct action class params from
     # processor class params?
-    def __init__(self, sig=None, processor_cls=None, name=None, description=None,
+    def __init__(self, sig=None, processor_cls=None, name=None, short_description=None,
                  permissions=None, runtime_data=None, lock_mode=Processor.INNER_LOCK):
         self._sig = sig
         self._processor_cls = processor_cls or self.PROCESSOR_CLS or ASYNC_ACTIONS_PROCESSOR_CLS
         self._runtime_data = runtime_data or dict()
         self._lock_mode = lock_mode
         self._name = name
-        self.short_description = description or f'run {self.__name__}'
+        self._short_description = short_description
         if permissions:
             self.allowed_permissions = permissions
 
     @property
     def __name__(self):
-        return self._name or self._sig.name.split('.')[-1]
+        if not self._name:
+            self._name = self._sig.name.split('.')[-1]
+        return self._name
+
+    @property
+    def short_description(self):
+        if not self._short_description:
+            description = ' '.join(['run', *self.__name__.split('_')]).title()
+            self._short_description = description
+        return self._short_description
 
     def _get_runtime_data(self):
         """
@@ -98,7 +107,7 @@ def as_action(*args, **options):
     :param :class:`~.TaskAction` action_cls: _description_
     :param :class:`~.processor.Processor` processor_cls: _description_
     :param str name: _description_
-    :param str description: _description_
+    :param str short_description: _description_
     :param list permissions: _description_
     :param dict runtime_data: _description_
 
