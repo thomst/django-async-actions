@@ -271,7 +271,7 @@ class ItemMessagesTests(TestCase):
         self.assertEqual(Lock.objects.filter(checksum__in=lock_ids).count(), len(lock_ids))
 
         # Now that the locks are created a get_locks call should trigger a retry.
-        test_task.retry = Mock(spec=test_task.retry)
+        test_task.retry = Mock(spec=ActionTask.retry)
         test_task.get_locks(*lock_ids)
         test_task.retry.assert_called_once()
         self.assertIsInstance(test_task.retry.call_args[1]['exc'], OccupiedLockException)
@@ -279,7 +279,7 @@ class ItemMessagesTests(TestCase):
         self.assertEqual(test_task.retry.call_args[1]['max_retries'], test_task.locked_max_retries)
 
         # Run get_locks again with locked_retry_backoff = None
-        test_task.retry = Mock(spec=test_task.retry)
+        test_task.retry = Mock(spec=ActionTask.retry)
         test_task.locked_retry_backoff = None
         test_task.get_locks(*lock_ids)
         test_task.retry.assert_called_once()
