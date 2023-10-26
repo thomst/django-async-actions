@@ -65,16 +65,6 @@ class ActionTask(Task):
         else:
             self.get_locks(*self._lock_ids)
 
-    @property
-    def state(self):
-        """
-        _summary_
-        """
-        if not self._state:
-            # TODO: Select-related the state object.
-            self._state = ActionTaskState.objects.get(task_id=self.request.id)
-        return self._state
-
     def run_with(self, state):
         """
         To run an action task from within another we pass in the state of the
@@ -92,6 +82,16 @@ class ActionTask(Task):
     def after_return(self, status, retval, task_id, args, kwargs, einfo):
         if self._lock_ids:
             Lock.objects.release_locks(*self._lock_ids)
+
+    @property
+    def state(self):
+        """
+        _summary_
+        """
+        if not self._state:
+            # TODO: Select-related the state object.
+            self._state = ActionTaskState.objects.get(task_id=self.request.id)
+        return self._state
 
     @property
     def obj(self):
