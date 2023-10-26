@@ -9,17 +9,6 @@ from .tasks import release_locks
 from .tasks import release_locks_on_error
 
 
-class LOCK_MODE:
-    #: Task based locking.
-    INNER = 'inner'
-
-    #: Chain based locking.
-    OUTER = 'outer'
-
-    #: Disabled locking.
-    NONE = None
-
-
 class Processor:
     """
         A processor builds a celery workflow for a specific
@@ -31,8 +20,17 @@ class Processor:
     :param bool inner_lock: _description_, defaults to True
     :param bool outer_lock: _description_, defaults to False
     """
-    # TODO: Overwork inner and outer lock api.
-    def __init__(self, queryset, sig, runtime_data=None, lock_mode=LOCK_MODE.INNER):
+
+    #: Task based locking.
+    INNER_LOCK = 'Inner'
+
+    #: Chain based locking.
+    OUTER_LOCK = 'Outer'
+
+    #: Disabled locking.
+    NO_LOCK = None
+
+    def __init__(self, queryset, sig, runtime_data=None, lock_mode=INNER_LOCK):
         self._sig = sig
         self._queryset = queryset
         self._runtime_data = runtime_data or dict()
@@ -85,13 +83,13 @@ class Processor:
         sig = self._sig.clone(kwargs=self._runtime_data)
 
         # Pass the lock ids as headers and let the task handle the locks.
-        if self._lock_mode == LOCK_MODE.INNER:
+        if self._lock_mode == self.INNER_LOCK:
             lock_ids = self._get_lock_ids(obj)
             sig = sig.clone(headers={'lock_ids': lock_ids})
 
         # Let a get_locks task precede the original signature and equip the
         # chain with release_locks tasks as callback.
-        elif self._lock_mode == LOCK_MODE.OUTER:
+        elif self._lock_mode == self.OUTER_LOCK:
             lock_ids = self._get_lock_ids(obj)
             # Make the signature immutable. Otherwise it would recieve a `None`
             # as positional argument from the get_locks task.

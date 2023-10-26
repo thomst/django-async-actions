@@ -2,7 +2,7 @@ from celery.canvas import Signature
 from celery.app.task import Task
 from .messages import add_task_message
 from .settings import ASYNC_ACTIONS_PROCESSOR_CLS
-from .processor import LOCK_MODE
+from .processor import Processor
 
 
 class BaseTaskAction:
@@ -14,7 +14,7 @@ class BaseTaskAction:
     # TODO: Is there are elegant way to distinct action class params from
     # processor class params?
     def __init__(self, sig=None, processor_cls=None, name=None, description=None,
-                 permissions=None, runtime_data=None, lock_mode=LOCK_MODE.INNER):
+                 permissions=None, runtime_data=None, lock_mode=Processor.INNER_LOCK):
         self._sig = sig
         self._processor_cls = processor_cls or self.PROCESSOR_CLS or ASYNC_ACTIONS_PROCESSOR_CLS
         self._runtime_data = runtime_data or dict()

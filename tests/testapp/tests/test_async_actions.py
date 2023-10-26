@@ -27,7 +27,6 @@ from async_actions.messages import add_task_message
 from async_actions.utils import get_task_message_checksum
 from async_actions.views import update_task_messages
 from async_actions.processor import Processor
-from async_actions.processor import LOCK_MODE
 from testapp.models import TestModel
 from testapp.tasks import test_task
 from testapp.tasks import test_chain
@@ -233,10 +232,10 @@ class ItemMessagesTests(TestCase):
             processor.results
 
     def test_processor_with_outer_lock(self):
-        # Initialize a processor with LOCK_MODE.OUTER.
+        # Initialize a processor with Processor.OUTER_LOCK.
         queryset = TestModel.objects.all()
         signature = test_task.si()
-        processor = Processor(queryset, signature, lock_mode=LOCK_MODE.OUTER)
+        processor = Processor(queryset, signature, lock_mode=Processor.OUTER_LOCK)
         workflow = processor.workflow
         self.assertIsInstance(workflow, group)
         self.assertEqual(type(processor.signatures[0]), _chain)
@@ -256,9 +255,9 @@ class ItemMessagesTests(TestCase):
         self.assertEqual(set(t.task_id for t in task_states), set(t.id for s in processor.signatures for t in s.tasks))
 
     def test_processor_with_chain_and_outer_lock(self):
-        # Initialize a processor with a chain as signature and LOCK_MODE.OUTER.
+        # Initialize a processor with a chain as signature and Processor.OUTER_LOCK.
         queryset = TestModel.objects.all()
-        processor = Processor(queryset, test_chain, lock_mode=LOCK_MODE.OUTER)
+        processor = Processor(queryset, test_chain, lock_mode=Processor.OUTER_LOCK)
         workflow = processor.workflow
         self.assertIsInstance(workflow, group)
         self.assertEqual(type(processor.signatures[0]), _chain)
