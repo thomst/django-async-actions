@@ -230,7 +230,7 @@ class ItemMessagesTests(TestCase):
         self.assertEqual(set(task_states), set([t for l in processor.task_states for t in l]))
         self.assertEqual(set(t.task_id for t in task_states), set(t.id for s in processor.signatures for t in s.tasks))
 
-    def test_processor_with_chain(self):
+    def test_processor_with_chain_and_outer_lock(self):
         # Initialize a processor with a chain as signature and LOCK_MODE.OUTER.
         queryset = TestModel.objects.all()
         processor = Processor(queryset, test_chain, lock_mode=LOCK_MODE.OUTER)
