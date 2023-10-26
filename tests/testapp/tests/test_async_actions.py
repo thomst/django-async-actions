@@ -17,6 +17,7 @@ from django.test import TestCase
 from django.test import RequestFactory
 from async_actions.models import Lock
 from async_actions.models import ActionTaskState
+from async_actions.tasks import ActionTask
 from async_actions.exceptions import OccupiedLockException
 from async_actions.messages import build_task_message
 from async_actions.messages import add_task_message
@@ -240,3 +241,52 @@ class ItemMessagesTests(TestCase):
         task_states = ActionTaskState.objects.all()
         self.assertEqual(set(task_states), set([t for l in processor.task_states for t in l]))
         self.assertEqual(set(t.task_id for t in task_states), set(t.id for s in processor.signatures for t in s.tasks))
+
+    def test_action_task(self):
+        task_state = self.create_task_state()
+        test_task.request.update(id=task_state.task_id)
+
+        # Test ActionTask properties.
+        self.assertEqual(test_task.state, task_state)
+        self.assertEqual(test_task.obj, task_state.obj)
+        self.assertEqual(test_task.notes, task_state.notes)
+
+        # Add a note.
+        test_task.add_note('foobar')
+        self.assertEqual(test_task.notes.all().count(), 1)
+        self.assertEqual(test_task.notes.all()[0].note, 'foobar')
+
+        # Just call the run_with method.
+        self.assertEqual(test_task, test_task.run_with(task_state))
+
+        # Test locking mechanism via before_start method without lock-ids.
+        test_task.before_start(task_state.task_id, [], {})
+        self.assertIsNone(test_task._lock_ids)
+
+        # Now create locks and pass in the lock-ids to request.headers.
+        lock_ids = ['lock_one', 'lock_two']
+        test_task.request.headers = dict(lock_ids=lock_ids)
+        test_task.before_start(task_state.task_id, [], {})
+        self.assertEqual(test_task._lock_ids, lock_ids)
+        self.assertEqual(Lock.objects.filter(checksum__in=lock_ids).count(), len(lock_ids))
+
+        # Now that the locks are created a get_locks call should trigger a retry.
+        test_task.retry = Mock(spec=test_task.retry)
+        test_task.get_locks(*lock_ids)
+        test_task.retry.assert_called_once()
+        self.assertIsInstance(test_task.retry.call_args[1]['exc'], OccupiedLockException)
+        self.assertIsInstance(test_task.retry.call_args[1]['countdown'], int)
+        self.assertEqual(test_task.retry.call_args[1]['max_retries'], test_task.locked_max_retries)
+
+        # Run get_locks again with locked_retry_backoff = None
+        test_task.retry = Mock(spec=test_task.retry)
+        test_task.locked_retry_backoff = None
+        test_task.get_locks(*lock_ids)
+        test_task.retry.assert_called_once()
+        self.assertIsInstance(test_task.retry.call_args[1]['exc'], OccupiedLockException)
+        self.assertEqual(test_task.retry.call_args[1]['countdown'], test_task.locked_retry_delay)
+        self.assertEqual(test_task.retry.call_args[1]['max_retries'], test_task.locked_max_retries)
+
+        # Release the locks via after_return method.
+        test_task.after_return(Mock(), Mock(), Mock(), Mock(), Mock(), Mock())
+        self.assertEqual(Lock.objects.filter(checksum__in=lock_ids).count(), 0)
