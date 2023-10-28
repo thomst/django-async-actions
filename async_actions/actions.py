@@ -106,20 +106,19 @@ def as_action(*args, **options):
     :param str description: _description_
     :param list permissions: _description_
     :param dict runtime_data: _description_
-
+    :param const lock_mode: _description_
     """
     def create_action_from_task(**options):
 
-        def _inner(thing):
-            action_cls = options.get('action_cls', TaskAction)
+        def _inner(signature):
+            if isinstance(signature, Task):
+                signature = signature.signature()
             if 'verbose_name' in options:
-                thing.verbose_name = options['verbose_name']
+                signature.verbose_name = options.pop('verbose_name')
             if 'description' in options:
-                thing.description = options['description']
-            if isinstance(thing, Task):
-                return action_cls(sig=thing.signature(), **options)
-            elif isinstance(thing, Signature):
-                return action_cls(sig=thing, **options)
+                signature.description = options.pop('description')
+            action_cls = options.pop('action_cls', TaskAction)
+            return action_cls(sig=signature, **options)
         return _inner
 
     # Usage as decorator without parameters or as function.
