@@ -380,8 +380,7 @@ class AsyncActionsTests(TestCase):
 
         # Description specified on signature.
         def func_three(): pass
-        my_task = celery.shared_task(func_three)
-        my_sig = my_task.si()
+        my_sig = celery.shared_task(func_three).si()
         my_sig.description = orig_description
         description = get_task_description(my_sig)
         self.assertEqual(orig_description, description)
