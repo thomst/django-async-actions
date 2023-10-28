@@ -66,7 +66,6 @@ class AsyncActionsTests(TestCase):
 
     def get_request(self, url):
         request = self.factory.get(url)
-        get_response = Mock()
         self.session_middleware.process_request(request)
         self.messages_middleware.process_request(request)
         request.user = self.user
