@@ -58,6 +58,7 @@ class AsyncActionsTests(TestCase):
             obj_id=obj.pk,
             task_id='dummy-task-id',
             task_name='testapp.tasks.dummy_task',
+            verbose_name='Dummy task',
             status=celery.states.PENDING
         )
         task_state = ActionTaskState(**params)
@@ -131,7 +132,7 @@ class AsyncActionsTests(TestCase):
         self.assertEqual(level, item_messages.INFO)
         self.assertTrue(task_state.status in msg)
         self.assertTrue(task_state.task_id in msg)
-        self.assertTrue(task_state.task_name.split('.')[-1] in msg)
+        self.assertTrue(task_state.verbose_name in msg)
         self.assertEqual(tag, 'task-waiting')
         self.assertEqual(data['task_id'], task_state.task_id)
         self.assertEqual(data['checksum'], get_task_message_checksum(task_state))
