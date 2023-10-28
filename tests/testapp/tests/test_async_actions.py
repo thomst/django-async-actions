@@ -316,3 +316,98 @@ class AsyncActionsTests(TestCase):
         # Release the locks via after_return method.
         test_task.after_return(Mock(), Mock(), Mock(), Mock(), Mock(), Mock())
         self.assertEqual(Lock.objects.filter(checksum__in=lock_ids).count(), 0)
+
+    def test_get_task_verbose_name(self):
+        # Test verbose_name derivation.
+        orig_verbose_name = 'foobar'
+
+        def my_task_func(): pass
+        my_task = celery.shared_task(my_task_func)
+
+        # No verbose name specified it will be derived from the function name.
+        verbose_name = get_task_verbose_name(my_task.si())
+        self.assertEqual(
+            verbose_name.replace(' ', '').lower(),
+            my_task_func.__name__.replace('_', '').lower())
+
+        # Verbose name specified on task.
+        def my_task_func(): pass
+        my_task = celery.shared_task(my_task_func)
+        my_task.verbose_name = orig_verbose_name
+        verbose_name = get_task_verbose_name(my_task.si())
+        self.assertEqual(orig_verbose_name, verbose_name)
+
+        # Verbose name specified on signature.
+        def my_task_func(): pass
+        my_task = celery.shared_task(my_task_func)
+        my_sig = my_task.si()
+        my_sig.verbose_name = orig_verbose_name
+        verbose_name = get_task_verbose_name(my_sig)
+        self.assertEqual(orig_verbose_name, verbose_name)
+
+        # Verbose name for canvas.
+        def my_task_func(): pass
+        my_task = celery.shared_task(my_task_func)
+        my_chain = my_task.si() | my_task.si()
+        verbose_name = get_task_verbose_name(my_chain)
+        self.assertEqual(repr(my_chain)[:56], verbose_name[:56])
+
+        # Verbose name for canvas explicitly specified.
+        def my_task_func(): pass
+        my_task = celery.shared_task(my_task_func)
+        my_chain = my_task.si() | my_task.si()
+        my_chain.verbose_name = orig_verbose_name
+        verbose_name = get_task_verbose_name(my_chain)
+        self.assertEqual(orig_verbose_name, verbose_name)
+
+    def test_get_task_description(self):
+        # Test description derivation.
+        orig_description = 'foobar'
+
+        def my_task_func(): pass
+        my_task = celery.shared_task(my_task_func)
+
+        # No description specified.
+        description = get_task_description(my_task.si())
+        self.assertFalse(description)
+
+        # Description specified on task.
+        def my_task_func(): pass
+        my_task = celery.shared_task(my_task_func)
+        my_task.description = orig_description
+        description = get_task_description(my_task.si())
+        self.assertEqual(orig_description, description)
+
+        # Description specified on signature.
+        def my_task_func(): pass
+        my_task = celery.shared_task(my_task_func)
+        my_sig = my_task.si()
+        my_sig.description = orig_description
+        description = get_task_description(my_sig)
+        self.assertEqual(orig_description, description)
+
+        # Description specified docstring.
+        def my_task_func(): pass
+        my_task_func.__doc__ = orig_description
+        my_task = celery.shared_task(my_task_func)
+        my_sig = my_task.si()
+        description = get_task_description(my_sig)
+        self.assertEqual(orig_description, description)
+
+        # Description for canvas.
+        def my_task_func(): pass
+        my_task = celery.shared_task(my_task_func)
+        my_chain = my_task.si() | my_task.si()
+        description = get_task_description(my_chain)
+        self.assertEqual(repr(my_chain), description)
+
+        # Description for canvas explicitly specified.
+        def my_task_func(): pass
+        my_task = celery.shared_task(my_task_func)
+        my_chain = my_task.si() | my_task.si()
+        my_chain.description = orig_description
+        description = get_task_description(my_chain)
+        self.assertEqual(orig_description, description)
+
+    def test_as_action_decorator(self):
+        pass
