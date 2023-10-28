@@ -35,6 +35,7 @@ from async_actions.utils import get_task_description
 from async_actions.views import update_task_messages
 from async_actions.processor import Processor
 from async_actions.actions import as_action
+from async_actions.actions import TaskAction
 
 
 class AsyncActionsTests(TestCase):
@@ -411,4 +412,33 @@ class AsyncActionsTests(TestCase):
         self.assertEqual(orig_description, description)
 
     def test_as_action_decorator(self):
-        pass
+        # Use as_action with task.
+        def my_task_func(): pass
+        my_task = celery.shared_task(my_task_func)
+        task_action = as_action(my_task)
+        self.assertIsInstance(task_action, TaskAction)
+
+        # Use as_action with signature.
+        def my_task_func(): pass
+        my_task = celery.shared_task(my_task_func)
+        task_action = as_action(my_task.si())
+        self.assertIsInstance(task_action, TaskAction)
+
+        # Use as_action decorator
+        @as_action
+        @celery.shared_task
+        def my_task_func(): pass
+        self.assertIsInstance(my_task_func, TaskAction)
+
+        # Use as_action decorator with arguments
+        @as_action(lock_mode=Processor.OUTER_LOCK)
+        @celery.shared_task
+        def my_task_func(): pass
+        self.assertIsInstance(my_task_func, TaskAction)
+        self.assertEqual(Processor.OUTER_LOCK, my_task_func._lock_mode)
+
+        # Use as_action with verbose_name
+        def my_task_func(): pass
+        my_task = celery.shared_task(my_task_func)
+        task_action = as_action(my_task, verbose_name='foobar')
+        self.assertEqual(task_action.short_description, 'foobar')
