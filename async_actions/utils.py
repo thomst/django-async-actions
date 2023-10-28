@@ -36,9 +36,8 @@ def get_task_name(sig):
     :param _type_ sig: _description_
     :return _type_: _description_
     """
-    signatures = getattr(sig, 'tasks', [sig])
-    return '__'.join([s.name for s in signatures])
-
+    table = str.maketrans('.( ', '___', '\'")')
+    return repr(sig).translate(table).replace('__', '_').rstrip('_')
 
 def get_task_verbose_name(sig):
     """
