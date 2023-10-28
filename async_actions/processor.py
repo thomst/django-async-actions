@@ -32,8 +32,8 @@ class Processor:
     NO_LOCK = None
 
     def __init__(self, queryset, sig, runtime_data=None, lock_mode=INNER_LOCK):
-        self._sig = sig
         self._queryset = queryset
+        self._sig = sig
         self._runtime_data = runtime_data or dict()
         self._lock_mode = lock_mode
         self._results = list()
