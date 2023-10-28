@@ -324,38 +324,38 @@ class AsyncActionsTests(TestCase):
         orig_verbose_name = 'foobar'
 
         # No verbose name specified it will be derived from the function name.
-        def func_one(): pass
-        my_task = celery.shared_task(func_one)
+        def func1(): pass
+        my_task = celery.shared_task(func1)
         verbose_name = get_task_verbose_name(my_task.si())
         self.assertEqual(
             verbose_name.replace(' ', '').lower(),
-            func_one.__name__.replace('_', '').lower())
+            func1.__name__.replace('_', '').lower())
 
         # Verbose name specified on task.
-        def func_two(): pass
-        my_task = celery.shared_task(func_two)
+        def func2(): pass
+        my_task = celery.shared_task(func2)
         my_task.verbose_name = orig_verbose_name
         verbose_name = get_task_verbose_name(my_task.si())
         self.assertEqual(orig_verbose_name, verbose_name)
 
         # Verbose name specified on signature.
-        def func_three(): pass
-        my_task = celery.shared_task(func_three)
+        def func3(): pass
+        my_task = celery.shared_task(func3)
         my_sig = my_task.si()
         my_sig.verbose_name = orig_verbose_name
         verbose_name = get_task_verbose_name(my_sig)
         self.assertEqual(orig_verbose_name, verbose_name)
 
         # Verbose name for canvas.
-        def func_four(): pass
-        my_task = celery.shared_task(func_four)
+        def func4(): pass
+        my_task = celery.shared_task(func4)
         my_chain = my_task.si() | my_task.si()
         verbose_name = get_task_verbose_name(my_chain)
         self.assertEqual(repr(my_chain)[:56], verbose_name[:56])
 
         # Verbose name for canvas explicitly specified.
-        def func_five(): pass
-        my_task = celery.shared_task(func_five)
+        def func5(): pass
+        my_task = celery.shared_task(func5)
         my_chain = my_task.si() | my_task.si()
         my_chain.verbose_name = orig_verbose_name
         verbose_name = get_task_verbose_name(my_chain)
@@ -366,43 +366,43 @@ class AsyncActionsTests(TestCase):
         orig_description = 'foobar'
 
         # No description specified.
-        def func_one(): pass
-        my_task = celery.shared_task(func_one)
+        def func6(): pass
+        my_task = celery.shared_task(func6)
         description = get_task_description(my_task.si())
         self.assertFalse(description)
 
         # Description specified on task.
-        def func_two(): pass
-        my_task = celery.shared_task(func_two)
+        def func7(): pass
+        my_task = celery.shared_task(func7)
         my_task.description = orig_description
         description = get_task_description(my_task.si())
         self.assertEqual(orig_description, description)
 
         # Description specified on signature.
-        def func_three(): pass
-        my_sig = celery.shared_task(func_three).si()
+        def func8(): pass
+        my_sig = celery.shared_task(func8).si()
         my_sig.description = orig_description
         description = get_task_description(my_sig)
         self.assertEqual(orig_description, description)
 
         # Description specified as docstring.
-        def func_four(): pass
-        func_four.__doc__ = orig_description
-        my_task = celery.shared_task(func_four)
+        def func9(): pass
+        func9.__doc__ = orig_description
+        my_task = celery.shared_task(func9)
         my_sig = my_task.si()
         description = get_task_description(my_sig)
         self.assertEqual(orig_description, description)
 
         # Description for canvas.
-        def func_five(): pass
-        my_task = celery.shared_task(func_five)
+        def func10(): pass
+        my_task = celery.shared_task(func10)
         my_chain = my_task.si() | my_task.si()
         description = get_task_description(my_chain)
         self.assertEqual(repr(my_chain), description)
 
         # Description for canvas explicitly specified.
-        def func_six(): pass
-        my_task = celery.shared_task(func_six)
+        def func11(): pass
+        my_task = celery.shared_task(func11)
         my_chain = my_task.si() | my_task.si()
         my_chain.description = orig_description
         description = get_task_description(my_chain)
@@ -410,33 +410,33 @@ class AsyncActionsTests(TestCase):
 
     def test_as_action_decorator(self):
         # Use as_action with task.
-        def func_one(): pass
-        my_task = celery.shared_task(func_one)
+        def func12(): pass
+        my_task = celery.shared_task(func12)
         task_action = as_action(my_task)
         self.assertIsInstance(task_action, TaskAction)
 
         # Use as_action with signature.
-        def func_two(): pass
-        my_task = celery.shared_task(func_two)
+        def func13(): pass
+        my_task = celery.shared_task(func13)
         task_action = as_action(my_task.si())
         self.assertIsInstance(task_action, TaskAction)
 
         # Use as_action decorator
         @as_action
         @celery.shared_task
-        def func_three(): pass
-        self.assertIsInstance(func_three, TaskAction)
+        def func14(): pass
+        self.assertIsInstance(func14, TaskAction)
 
         # Use as_action decorator with arguments
         @as_action(lock_mode=Processor.OUTER_LOCK)
         @celery.shared_task
-        def func_four(): pass
-        self.assertIsInstance(func_four, TaskAction)
-        self.assertEqual(Processor.OUTER_LOCK, func_four._lock_mode)
+        def func15(): pass
+        self.assertIsInstance(func15, TaskAction)
+        self.assertEqual(Processor.OUTER_LOCK, func15._lock_mode)
 
         # Use as_action with verbose_name and description.
-        def func_five(): pass
-        my_task = celery.shared_task(func_five)
+        def func16(): pass
+        my_task = celery.shared_task(func16)
         task_action = as_action(my_task, verbose_name='foobar', description='foobar')
         self.assertEqual(task_action.short_description, 'foobar')
         self.assertEqual(task_action.description, 'foobar')
