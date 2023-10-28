@@ -8,13 +8,17 @@ from celery.canvas import _chain
 from celery.canvas import Signature
 import item_messages
 from item_messages.middleware import ItemMessageMiddleware
-from item_messages import get_messages
 from django.contrib.sessions.middleware import SessionMiddleware
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User
 from django.urls import reverse
 from django.test import TestCase
 from django.test import RequestFactory
+from testapp.models import TestModel
+from testapp.tasks import test_task
+from testapp.tasks import test_chain
+from testapp.utils import create_test_data
+from async_actions import __version__
 from async_actions.models import Lock
 from async_actions.models import ActionTaskState
 from async_actions.tasks import ActionTask
@@ -25,12 +29,12 @@ from async_actions.exceptions import OccupiedLockException
 from async_actions.messages import build_task_message
 from async_actions.messages import add_task_message
 from async_actions.utils import get_task_message_checksum
+from async_actions.utils import get_task_name
+from async_actions.utils import get_task_verbose_name
+from async_actions.utils import get_task_description
 from async_actions.views import update_task_messages
 from async_actions.processor import Processor
-from testapp.models import TestModel
-from testapp.tasks import test_task
-from testapp.tasks import test_chain
-from testapp.utils import create_test_data
+from async_actions.actions import as_action
 
 
 class AsyncActionsTests(TestCase):
