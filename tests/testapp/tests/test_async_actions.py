@@ -33,7 +33,7 @@ from testapp.tasks import test_chain
 from testapp.utils import create_test_data
 
 
-class ItemMessagesTests(TestCase):
+class AsyncActionsTests(TestCase):
     @classmethod
     def setUpTestData(cls):
         create_test_data()
