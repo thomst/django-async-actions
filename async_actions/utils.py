@@ -49,7 +49,7 @@ def get_task_verbose_name(sig):
     if getattr(sig, 'verbose_name', None):
         return sig.verbose_name
     elif isinstance(sig, tuple(sig.TYPES.values())):
-        return repr(sig)
+        return repr(sig)[:56] + (repr(sig)[56:] and ' ...')
     elif getattr(sig.type, 'verbose_name', None):
         return sig.type.verbose_name
     else:
