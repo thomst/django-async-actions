@@ -437,8 +437,11 @@ class AsyncActionsTests(TestCase):
         self.assertIsInstance(my_task_func, TaskAction)
         self.assertEqual(Processor.OUTER_LOCK, my_task_func._lock_mode)
 
-        # Use as_action with verbose_name
+        # Use as_action with verbose_name and description.
         def my_task_func(): pass
         my_task = celery.shared_task(my_task_func)
-        task_action = as_action(my_task, verbose_name='foobar')
+        task_action = as_action(my_task, verbose_name='foobar', description='foobar')
         self.assertEqual(task_action.short_description, 'foobar')
+        self.assertEqual(task_action.description, 'foobar')
+        self.assertEqual(task_action._sig.verbose_name, 'foobar')
+        self.assertEqual(task_action._sig.description, 'foobar')
