@@ -68,6 +68,6 @@ def get_task_description(sig):
     elif isinstance(sig, tuple(sig.TYPES.values())):
         return repr(sig)
     elif hasattr(sig.type, 'description'):
-        return sig.type.verbose_name
+        return sig.type.description
     elif sig.type.__doc__:
         return sig.type.__doc__
