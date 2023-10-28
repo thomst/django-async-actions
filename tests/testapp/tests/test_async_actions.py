@@ -385,6 +385,14 @@ class AsyncActionsTests(TestCase):
         description = get_task_description(my_sig)
         self.assertEqual(orig_description, description)
 
+        # Description specified as docstring.
+        def func_four(): pass
+        func_four.__doc__ = orig_description
+        my_task = celery.shared_task(func_four)
+        my_sig = my_task.si()
+        description = get_task_description(my_sig)
+        self.assertEqual(orig_description, description)
+
         # Description for canvas.
         def func_five(): pass
         my_task = celery.shared_task(func_five)

@@ -69,3 +69,5 @@ def get_task_description(sig):
         return repr(sig)
     elif hasattr(sig.type, 'description'):
         return sig.type.description
+    elif sig.type.__doc__:
+        return sig.type.__doc__
