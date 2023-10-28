@@ -27,3 +27,48 @@ def get_task_message_checksum(task_state):
         seed = f'{task_state.status}{task_state.notes.count()}'
     hash_ = hashlib.shake_128(seed.encode())
     return hash_.hexdigest(12)
+
+
+def get_task_name(sig):
+    """
+    _summary_
+
+    :param _type_ sig: _description_
+    :return _type_: _description_
+    """
+    signatures = getattr(sig, 'tasks', [sig])
+    return '__'.join([s.name for s in signatures])
+
+
+def get_task_verbose_name(sig):
+    """
+    _summary_
+
+    :param _type_ sig: _description_
+    :return _type_: _description_
+    """
+    if getattr(sig, 'verbose_name', None):
+        return sig.verbose_name
+    elif isinstance(sig, tuple(sig.TYPES.values())):
+        return repr(sig)
+    elif getattr(sig.type, 'verbose_name', None):
+        return sig.type.verbose_name
+    else:
+        return sig.name.split('.')[-1].replace('_', ' ').title()
+
+
+def get_task_description(sig):
+    """
+    _summary_
+
+    :param _type_ sig: _description_
+    :return _type_: _description_
+    """
+    if hasattr(sig, 'description'):
+        return sig.description
+    elif isinstance(sig, tuple(sig.TYPES.values())):
+        return repr(sig)
+    elif hasattr(sig.type, 'description'):
+        return sig.type.verbose_name
+    elif sig.type.__doc__:
+        return sig.type.__doc__

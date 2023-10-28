@@ -17,6 +17,7 @@ class ActionTaskState(TaskResult):
     ctype = models.ForeignKey(ContentType, on_delete=models.CASCADE)
     obj_id = models.PositiveIntegerField()
     obj = GenericForeignKey("ctype", "obj_id")
+    verbose_name = models.CharField(max_length=128, verbose_name=_("Verbose task name"))
 
     # TODO: Define a states module with appropriate constants to work with
     # status-tags.

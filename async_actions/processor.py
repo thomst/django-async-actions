@@ -4,6 +4,7 @@ from celery import states
 from django.contrib.contenttypes.models import ContentType
 from .models import ActionTaskState
 from .utils import get_object_checksum
+from .utils import get_task_verbose_name
 from .tasks import get_locks
 from .tasks import release_locks
 from .tasks import release_locks_on_error
@@ -66,6 +67,7 @@ class Processor:
             obj_id=obj.pk,
             task_id=signature.id,
             task_name=signature.task,
+            verbose_name=get_task_verbose_name(signature),
             status=states.PENDING
         )
         task_state = ActionTaskState(**params)

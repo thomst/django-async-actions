@@ -1,7 +1,7 @@
 {% load task_message %}
 {% autoescape on %}
     <span class="actiontask {{task_state.status}}">
-        <p>[{{task_state.task_id}}][{{task_state.status}}] {{task_state.task_name|format_task_name}}</p>
+        <p>[{{task_state.task_id}}][{{task_state.status}}] {{task_state.verbose_name}}</p>
         {% if task_state.notes %}
             <ul class="message-notes">
                 {% for note in task_state.notes.all %}
