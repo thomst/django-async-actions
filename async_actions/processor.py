@@ -1,6 +1,4 @@
-
-from celery import group
-from celery import states
+import celery
 from django.contrib.contenttypes.models import ContentType
 from .models import ActionTaskState
 from .utils import get_object_checksum
@@ -68,7 +66,7 @@ class Processor:
             task_id=signature.id,
             task_name=signature.task,
             verbose_name=get_task_verbose_name(signature),
-            status=states.PENDING
+            status=celery.states.PENDING
         )
         task_state = ActionTaskState(**params)
         return task_state
@@ -136,7 +134,7 @@ class Processor:
 
         :return :class:`~celery.canvas.group`: celery workflow
         """
-        return group(*self.signatures)
+        return celery.group(*self.signatures)
 
     # FIXME: Do we need results property?
     @property
