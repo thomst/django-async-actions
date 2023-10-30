@@ -21,23 +21,34 @@ class Processor:
     """
 
     #: Task based locking.
-    INNER_LOCK = 'Inner'
+    TASK_LOCK = 'tasklock'
 
-    #: Chain based locking.
-    OUTER_LOCK = 'Outer'
+    #: Chain based locking used for chains.
+    CHAIN_LOCK = 'chainlock'
+
+    #: Chord based locking used for groups.
+    GROUP_LOCK = 'chordlock'
 
     #: Disabled locking.
-    NO_LOCK = None
+    NO_LOCK = 'nolock'
 
-    def __init__(self, queryset, sig, runtime_data=None, lock_mode=INNER_LOCK):
+    def __init__(self, queryset, sig, runtime_data=None, lock_mode=None):
         self._queryset = queryset
         self._sig = sig
         self._runtime_data = runtime_data or dict()
-        self._lock_mode = lock_mode
+        self._lock_mode = lock_mode or self._get_lock_mode(sig)
         self._results = list()
         self._task_states = list()
         self._signatures = None
         self._workflow = None
+
+    def _get_lock_mode(self, sig):
+        if isinstance(sig, sig.TYPES['chain']):
+            return self.CHAIN_LOCK
+        elif isinstance(sig, sig.TYPES['group']):
+            return self.GROUP_LOCK
+        else:
+            return self.TASK_LOCK
 
     def _get_lock_ids(self, obj):
         """
@@ -69,6 +80,7 @@ class Processor:
             status=celery.states.PENDING
         )
         task_state = ActionTaskState(**params)
+        task_state.save()
         return task_state
 
     def _get_signature(self, obj):
@@ -83,13 +95,13 @@ class Processor:
         sig = self._sig.clone(kwargs=self._runtime_data)
 
         # Pass the lock ids as headers and let the task handle the locks.
-        if self._lock_mode == self.INNER_LOCK:
+        if self._lock_mode == self.TASK_LOCK:
             lock_ids = self._get_lock_ids(obj)
             sig = sig.clone(headers={'lock_ids': lock_ids})
 
         # Let a get_locks task precede the original signature and equip the
         # chain with release_locks tasks as callback.
-        elif self._lock_mode == self.OUTER_LOCK:
+        elif self._lock_mode == self.CHAIN_LOCK:
             lock_ids = self._get_lock_ids(obj)
             # Make the signature immutable. Otherwise it would recieve a `None`
             # as positional argument from the get_locks task.
@@ -98,7 +110,37 @@ class Processor:
             sig.set(link=release_locks.si(*lock_ids))
             sig.set(link_error=release_locks_on_error.s(*lock_ids))
 
+        # Chain the get_locks with a chord of the original signature as header
+        # and a release_locks callback as body of the chord.
+        elif self._lock_mode == self.GROUP_LOCK:
+            lock_ids = self._get_lock_ids(obj)
+            callback = release_locks.si(*lock_ids)
+            sig.set_immutable(True)
+            sig = get_locks.si(*lock_ids) | (sig | callback)
+            sig.set(link_error=release_locks_on_error.s(*lock_ids))
+
         return sig
+
+    def _get_task_states(self, obj, signature):
+        """
+        _summary_
+
+        :param _type_ obj: _description_
+        :param _type_ signature: _description_
+        """
+        # TODO: Exlude release_locks tasks.
+        task_states = list()
+        if signature.name == release_locks.name:
+            pass
+        elif isinstance(signature, (signature.TYPES['chain'], signature.TYPES['group'])):
+            for sig in signature.tasks:
+                task_states.extend(self._get_task_states(obj, sig))
+        elif isinstance(signature, signature.TYPES['chord']):
+            task_states.extend(self._get_task_states(obj, signature.tasks))
+            task_states.extend(self._get_task_states(obj, signature.body))
+        elif signature.id:
+            task_states.append(self._get_task_state(obj, signature))
+        return task_states
 
     def _get_signatures(self):
         """
@@ -115,12 +157,7 @@ class Processor:
             # For primitives we loop over the tasks attribute of the
             # signature. Otherwise we simply use the signature in a
             # one-item-list.
-            task_states = list()
-            for sig in getattr(signature, 'tasks', [signature]):
-                task_state = self._get_task_state(obj, sig)
-                task_state.save()
-                task_states.append(task_state)
-            self._task_states.append(task_states)
+            self._task_states.extend(self._get_task_states(obj, signature))
 
         return signatures
 
