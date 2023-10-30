@@ -228,7 +228,7 @@ class AsyncActionsTests(TestCase):
         self.assertIsInstance(workflow, group)
         self.assertEqual(type(processor.signatures[0]), Signature)
         task_states = ActionTaskState.objects.all()
-        self.assertEqual(set(task_states), set([l[0] for l in processor.task_states]))
+        self.assertEqual(set(task_states), set([t for t in processor.task_states]))
         self.assertEqual(set(t.task_id for t in task_states), set(s.id for s in processor.signatures))
 
         # Just for the coverage...
@@ -245,7 +245,7 @@ class AsyncActionsTests(TestCase):
         self.assertIsInstance(workflow, group)
         self.assertEqual(type(processor.signatures[0]), _chain)
         task_states = ActionTaskState.objects.all()
-        self.assertEqual(set(task_states), set([t for l in processor.task_states for t in l]))
+        self.assertEqual(set(task_states), set([t for t in processor.task_states]))
         self.assertEqual(set(t.task_id for t in task_states), set(t.id for s in processor.signatures for t in s.tasks))
 
     def test_processor_with_chain(self):
@@ -256,7 +256,7 @@ class AsyncActionsTests(TestCase):
         self.assertIsInstance(workflow, group)
         self.assertEqual(type(processor.signatures[0]), _chain)
         task_states = ActionTaskState.objects.all()
-        self.assertEqual(set(task_states), set([t for l in processor.task_states for t in l]))
+        self.assertEqual(set(task_states), set([t for t in processor.task_states]))
         self.assertEqual(set(t.task_id for t in task_states), set(t.id for s in processor.signatures for t in s.tasks))
 
     def test_processor_with_chain_and_outer_lock(self):
@@ -267,7 +267,7 @@ class AsyncActionsTests(TestCase):
         self.assertIsInstance(workflow, group)
         self.assertEqual(type(processor.signatures[0]), _chain)
         task_states = ActionTaskState.objects.all()
-        self.assertEqual(set(task_states), set([t for l in processor.task_states for t in l]))
+        self.assertEqual(set(task_states), set([t for t in processor.task_states]))
         self.assertEqual(set(t.task_id for t in task_states), set(t.id for s in processor.signatures for t in s.tasks))
 
     def test_action_task(self):
