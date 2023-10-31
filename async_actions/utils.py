@@ -52,7 +52,10 @@ def get_task_verbose_name(sig):
     if getattr(sig, 'verbose_name', None):
         return sig.verbose_name
     elif isinstance(sig, tuple(sig.TYPES.values())):
-        return repr(sig)[:56] + (repr(sig)[56:] and ' ...')
+        verbose_name = repr(sig)[:56] + (repr(sig)[56:] and ' ...') + repr(sig)[62:]
+        # Since dango uses string substitution on short_description we need to
+        # escape percents.
+        return verbose_name.replace('%', '%%')
     elif getattr(sig.type, 'verbose_name', None):
         return sig.type.verbose_name
     else:
