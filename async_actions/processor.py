@@ -96,6 +96,9 @@ class Processor:
 
         # Chain get_locks, the signature and the release_locks task and add a
         # link_error to handle locks when the sig raises an exception.
+        # FIXME: When the group part of a chord fails we got some weird errors
+        # which end up in "django.db.utils.IntegrityError: (1048, "Column
+        # 'task_id' cannot be null")"
         elif self._lock_mode == self.OUTER_LOCK:
             lock_ids = self._get_lock_ids(obj)
             sig.set_immutable(True)

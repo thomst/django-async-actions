@@ -59,6 +59,8 @@ def get_task_verbose_name(sig):
     elif getattr(sig.type, 'verbose_name', None):
         return sig.type.verbose_name
     else:
+        # FIXME: Better use the representation of signature? It's more verbose
+        # since it lists the arguments to call the task with.
         return sig.name.split('.')[-1].replace('_', ' ').title()
 
 
