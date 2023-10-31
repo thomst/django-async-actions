@@ -1,3 +1,4 @@
+import re
 import hashlib
 import celery
 
@@ -36,8 +37,10 @@ def get_task_name(sig):
     :param _type_ sig: _description_
     :return _type_: _description_
     """
-    table = str.maketrans('.( ', '___', '\'")')
-    return repr(sig).translate(table).replace('__', '_').rstrip('_')
+    table = str.maketrans('.,%(\'") ', '________')
+    name = repr(sig).translate(table)
+    return re.sub('_+', '_', name).strip('_')
+
 
 def get_task_verbose_name(sig):
     """
