@@ -20,14 +20,11 @@ class Processor:
     :param bool outer_lock: _description_, defaults to False
     """
 
-    #: Task based locking.
-    TASK_LOCK = 'tasklock'
+    #: Task based locking used for single tasks.
+    INNER_LOCK = 'innerlock'
 
-    #: Chain based locking used for chains.
-    CHAIN_LOCK = 'chainlock'
-
-    #: Chord based locking used for groups.
-    GROUP_LOCK = 'chordlock'
+    #: Chain based locking used for canvas.
+    OUTER_LOCK = 'outerlock'
 
     #: Disabled locking.
     NO_LOCK = 'nolock'
@@ -43,12 +40,10 @@ class Processor:
         self._workflow = None
 
     def _get_lock_mode(self, sig):
-        if isinstance(sig, sig.TYPES['chain']):
-            return self.CHAIN_LOCK
-        elif isinstance(sig, sig.TYPES['group']):
-            return self.GROUP_LOCK
+        if isinstance(sig, tuple(sig.TYPES.values())):
+            return self.OUTER_LOCK
         else:
-            return self.TASK_LOCK
+            return self.INNER_LOCK
 
     def _get_lock_ids(self, obj):
         """
@@ -95,28 +90,16 @@ class Processor:
         sig = self._sig.clone(kwargs=self._runtime_data)
 
         # Pass the lock ids as headers and let the task handle the locks.
-        if self._lock_mode == self.TASK_LOCK:
+        if self._lock_mode == self.INNER_LOCK:
             lock_ids = self._get_lock_ids(obj)
             sig = sig.clone(headers={'lock_ids': lock_ids})
 
-        # Let a get_locks task precede the original signature and equip the
-        # chain with release_locks tasks as callback.
-        elif self._lock_mode == self.CHAIN_LOCK:
+        # Chain get_locks, the signature and the release_locks task and add a
+        # link_error to handle locks when the sig raises an exception.
+        elif self._lock_mode == self.OUTER_LOCK:
             lock_ids = self._get_lock_ids(obj)
-            # Make the signature immutable. Otherwise it would recieve a `None`
-            # as positional argument from the get_locks task.
             sig.set_immutable(True)
-            sig = get_locks.si(*lock_ids) | sig
-            sig.set(link=release_locks.si(*lock_ids))
-            sig.set(link_error=release_locks_on_error.s(*lock_ids))
-
-        # Chain the get_locks with a chord of the original signature as header
-        # and a release_locks callback as body of the chord.
-        elif self._lock_mode == self.GROUP_LOCK:
-            lock_ids = self._get_lock_ids(obj)
-            callback = release_locks.si(*lock_ids)
-            sig.set_immutable(True)
-            sig = get_locks.si(*lock_ids) | (sig | callback)
+            sig = get_locks.si(*lock_ids) | sig | release_locks.si(*lock_ids)
             sig.set(link_error=release_locks_on_error.s(*lock_ids))
 
         return sig
