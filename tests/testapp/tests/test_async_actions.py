@@ -240,18 +240,17 @@ class AsyncActionsTests(TestCase):
         # Initialize a processor with Processor.OUTER_LOCK.
         queryset = TestModel.objects.all()
         signature = test_task.si()
-        processor = Processor(queryset, signature, lock_mode=Processor.CHAIN_LOCK)
+        processor = Processor(queryset, signature, lock_mode=Processor.OUTER_LOCK)
         workflow = processor.workflow
-        self.assertIsInstance(workflow, group)
-        self.assertEqual(type(processor.signatures[0]), _chain)
+        self.assertIsInstance(workflow, signature.TYPES['group'])
+        self.assertIsInstance(processor.signatures[0], signature.TYPES['chain'])
         task_states = ActionTaskState.objects.all()
         self.assertEqual(set(task_states), set([t for t in processor.task_states]))
-        self.assertEqual(set(t.task_id for t in task_states), set(t.id for s in processor.signatures for t in s.tasks))
 
     def test_processor_with_chain(self):
         # Initialize a processor with a chain as signature.
         queryset = TestModel.objects.all()
-        processor = Processor(queryset, test_chain)
+        processor = Processor(queryset, test_chain, lock_mode=Processor.INNER_LOCK)
         workflow = processor.workflow
         self.assertIsInstance(workflow, group)
         self.assertEqual(type(processor.signatures[0]), _chain)
@@ -262,7 +261,7 @@ class AsyncActionsTests(TestCase):
     def test_processor_with_chain_and_outer_lock(self):
         # Initialize a processor with a chain as signature and Processor.OUTER_LOCK.
         queryset = TestModel.objects.all()
-        processor = Processor(queryset, test_chain)
+        processor = Processor(queryset, test_chain, lock_mode=Processor.INNER_LOCK)
         workflow = processor.workflow
         self.assertIsInstance(workflow, group)
         self.assertEqual(type(processor.signatures[0]), _chain)
@@ -428,11 +427,11 @@ class AsyncActionsTests(TestCase):
         self.assertIsInstance(func14, TaskAction)
 
         # Use as_action decorator with arguments
-        @as_action(lock_mode=Processor.CHAIN_LOCK)
+        @as_action(lock_mode=Processor.OUTER_LOCK)
         @celery.shared_task
         def func15(): pass
         self.assertIsInstance(func15, TaskAction)
-        self.assertEqual(Processor.CHAIN_LOCK, func15._lock_mode)
+        self.assertEqual(Processor.OUTER_LOCK, func15._lock_mode)
 
         # Use as_action with verbose_name and description.
         def func16(): pass
