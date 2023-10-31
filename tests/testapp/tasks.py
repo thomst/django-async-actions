@@ -1,10 +1,15 @@
 import time
 from celery import shared_task
-from celery.canvas import chain
+from celery import group
 
 
 @shared_task(bind=True)
 def test_task(self):
+    self.add_note(f'Test task run with {self.obj}')
+
+
+@shared_task(bind=True)
+def long_running_task(self):
     self.add_note(f'NoteOne for {self.obj}')
 
     time.sleep(2)
@@ -17,16 +22,21 @@ def test_task(self):
     self.add_note(f'NoteFour for {self.obj}')
 
 
+@shared_task(bind=True, verbose_name='Info Task')
+def info_task(self):
+    self.add_note(f'self.obj: {self.obj}')
+    self.add_note(f'self.state: {self.state}')
+    self.add_note(f'self._lock_ids: {self._lock_ids}')
+    self.add_note(f'self.request.id: {self.request.id}')
+
+
 @shared_task(bind=True)
 def task_with_arg(self, arg):
-    self.add_note(f'NoteOne for {self.obj}')
     self.add_note(f'This task was called with {arg}')
 
 
 @shared_task(bind=True)
-def task_with_kwargs(self, *args, **kwargs):
-    self.add_note(f'NoteOne for {self.obj}')
-    # self.add_note(f'This task was called with {args}')
+def task_with_kwargs(self, **kwargs):
     self.add_note(f'This task was called with {kwargs}')
 
 
@@ -37,9 +47,21 @@ def task_that_fails(self):
 
 
 @shared_task(bind=True)
+def task_that_calls_other_tasks(self):
+    self.add_note(f'self.obj: {self.obj}')
+    self.add_note(f'self.state: {self.state}')
+    self.add_note(f'self._lock_ids: {self._lock_ids}')
+    self.add_note(f'self.request.id: {self.request.id}')
+    debug_task.run_with(self.state)()
+    info_task.run_with(self.state)()
+    task_that_fails.run_with(self.state)()
+
+
+@shared_task(bind=True)
 def debug_task(self):
     print(f'Request: {self.request!r}')
 
 
-test_chain = task_with_kwargs.s(foo='bar') | task_with_kwargs.s(fooo='bar')
-test_chain = test_task.si() | test_task.si()
+test_chain = info_task.si() | task_with_kwargs.s(fooo='bar')
+test_group = group(long_running_task.si(), long_running_task.si(), long_running_task.si())
+test_group_that_fails = group(long_running_task.si(), long_running_task.si(), task_that_fails.si())
