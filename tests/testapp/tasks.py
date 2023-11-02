@@ -62,6 +62,10 @@ def debug_task(self):
     print(f'Request: {self.request!r}')
 
 
-test_chain = info_task.si() | task_with_kwargs.s(fooo='bar')
-test_group = group(long_running_task.si(), long_running_task.si(), long_running_task.si())
-test_group_that_fails = group(long_running_task.si(), long_running_task.si(), task_that_fails.si())
+test_chain = info_task.si() | task_with_kwargs.si(fooo='bar')
+test_chain_that_fails = info_task.si() | task_that_fails.si() | task_with_kwargs.s(fooo='bar')
+test_group = group(debug_task.si(), debug_task.si(), debug_task.si())
+test_group_that_fails = group(debug_task.si(), debug_task.si(), task_that_fails.si())
+test_chord = (group(debug_task.si(), debug_task.si()) | task_with_arg.s())
+test_chord_with_failing_callback = (group(debug_task.si(), debug_task.si()) | task_that_fails.si())
+test_chord_with_failing_group = (group(debug_task.si(), task_that_fails.si()) | debug_task.si())
