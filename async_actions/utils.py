@@ -37,7 +37,7 @@ def get_task_name(sig):
     :param _type_ sig: _description_
     :return _type_: _description_
     """
-    table = str.maketrans('.,%(\'") ', '________')
+    table = str.maketrans('.,%(\'")|= ', '__________')
     name = repr(sig).translate(table)
     return re.sub('_+', '_', name).strip('_')
 
