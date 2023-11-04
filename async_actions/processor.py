@@ -96,9 +96,9 @@ class Processor:
 
         # Chain get_locks, the signature and the release_locks task and add a
         # link_error to handle locks when the sig raises an exception.
-        # FIXME: When the group part of a chord fails we got some weird errors
-        # which end up in "django.db.utils.IntegrityError: (1048, "Column
-        # 'task_id' cannot be null")"
+        # FIXME: When the group part of a chord fails we got some weird errors.
+        # This is a general problem with chords nested in a chain. It's not
+        # the error callback.
         elif self._lock_mode == self.OUTER_LOCK:
             lock_ids = self._get_lock_ids(obj)
             sig.set_immutable(True)
@@ -159,7 +159,6 @@ class Processor:
         """
         return celery.group(*self.signatures)
 
-    # FIXME: Do we need results property?
     @property
     def results(self):
         """
