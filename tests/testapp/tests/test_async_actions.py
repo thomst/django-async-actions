@@ -12,12 +12,16 @@ from django.contrib.sessions.middleware import SessionMiddleware
 from django.contrib.contenttypes.models import ContentType
 from django.contrib.auth.models import User
 from django.urls import reverse
+from django.http import HttpResponse
+from django.conf import settings
 from django.test import TestCase
 from django.test import RequestFactory
 from testapp.models import TestModel
 from testapp.tasks import test_task
 from testapp.tasks import test_chain
 from testapp.utils import create_test_data
+from testapp.forms import SomeRuntimeData
+from testapp.forms import MoreRuntimeData
 from testapp.celery import app as celery_app
 from async_actions import __version__
 from async_actions.models import Lock
@@ -37,6 +41,25 @@ from async_actions.views import update_task_messages
 from async_actions.processor import Processor
 from async_actions.actions import as_action
 from async_actions.actions import TaskAction
+
+
+class AlterSettings:
+    def __init__(self, **kwargs):
+        self.settings = kwargs
+        self.origin = dict()
+
+    def __enter__(self):
+        for setting, value in self.settings.items():
+            if hasattr(settings, setting):
+                self.origin[setting] = getattr(settings, setting)
+            setattr(settings, setting, value)
+
+    def __exit__(self, type, value, traceback):
+        for setting in self.settings:
+            if setting in self.origin:
+                setattr(settings, setting, self.origin[setting])
+            else:
+                delattr(settings, setting)
 
 
 class AsyncActionsTests(TestCase):
@@ -67,8 +90,11 @@ class AsyncActionsTests(TestCase):
         task_state.save()
         return task_state
 
-    def get_request(self, url):
-        request = self.factory.get(url)
+    def get_request(self, url, data=None):
+        if data:
+            request = self.factory.post(url, data)
+        else:
+            request = self.factory.get(url)
         self.session_middleware.process_request(request)
         self.messages_middleware.process_request(request)
         request.user = self.user
@@ -450,3 +476,49 @@ class AsyncActionsTests(TestCase):
         self.assertEqual(Processor.OUTER_LOCK, func._lock_mode)
         celery_app.tasks.unregister(func._sig.type)
 
+    def test_task_action(self):
+        def func(): pass
+        my_task = celery.shared_task(func)
+        my_sig = my_task.si()
+        action = TaskAction(my_sig)
+        queryset = TestModel.objects.all()
+        url = reverse('admin:testapp_testmodel_changelist')
+        request = self.get_request(url)
+
+        with AlterSettings(CELERY_TASK_ALWAYS_EAGER=True, CELERY_TASK_STORE_EAGER_RESULT=True):
+            # Run action without forms.
+            action = TaskAction(my_sig)
+            retval = action(Mock(), request, queryset)
+            self.assertIsNone(retval)
+
+            # Run action with unbound forms.
+            action = TaskAction(my_sig, forms=[SomeRuntimeData, MoreRuntimeData])
+            retval = action(Mock(), request, queryset)
+            self.assertIsInstance(retval, HttpResponse)
+            self.assertInHTML(SomeRuntimeData().as_table(), retval.content.decode())
+            self.assertInHTML(MoreRuntimeData().as_table(), retval.content.decode())
+
+            # Run action with forms and invalid post data.
+            post_data = {
+                f'run_{action._name}': action._name,
+                'two': 'foo',
+                'four': 'foo',
+            }
+            request = self.get_request(url, post_data)
+            action = TaskAction(my_sig, forms=[SomeRuntimeData, MoreRuntimeData])
+            retval = action(Mock(), request, queryset)
+            self.assertIsInstance(retval, HttpResponse)
+            self.assertInHTML(SomeRuntimeData(post_data).as_table(), retval.content.decode())
+            self.assertInHTML(MoreRuntimeData(post_data).as_table(), retval.content.decode())
+
+            # Run action with forms and valid post data.
+            post_data = {
+                f'run_{action._name}': action._name,
+                'one': 'foo',
+                'two': 'foo',
+                'four': 'foo',
+            }
+            request = self.get_request(url, post_data)
+            action = TaskAction(my_sig, forms=[SomeRuntimeData, MoreRuntimeData])
+            retval = action(Mock(), request, queryset)
+            self.assertIsNone(retval)
