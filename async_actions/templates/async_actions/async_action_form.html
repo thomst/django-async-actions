@@ -1,0 +1,29 @@
+{% extends 'admin/base_site.html' %}
+{% load i18n %}
+
+{% block content %}
+<form action="" method="post">
+
+    {% csrf_token %}
+
+    <input type="hidden" name="action" value="{{action}}" />
+    <input type="hidden" name="{{action}}" value="{{action}}" />
+
+    {% for form in forms %}
+        <fieldset><table>{{ form.as_table }}</table></fieldset>
+        <br />
+    {% endfor %}
+
+    <fieldset>
+        <input type="submit" name="run_{{action}}" class="default" style="float: none" value="Submit" />
+        <a class="button default" style="float: none; padding: 10px 15px" href="">{% translate "Back" %}</a>
+    </fieldset>
+
+    <fieldset><ul>
+        {% for object in objects %}
+            <input type="hidden" name="_selected_action" value="{{ object.pk }}" />
+        {% endfor %}
+    </ul></fieldset>
+
+</form>
+{% endblock %}

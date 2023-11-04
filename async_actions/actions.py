@@ -1,5 +1,5 @@
-from celery.canvas import Signature
 from celery.app.task import Task
+from django.shortcuts import render
 from .messages import add_task_message
 from .settings import ASYNC_ACTIONS_PROCESSOR_CLS
 from .utils import get_task_name
@@ -13,13 +13,11 @@ class BaseTaskAction:
     """
     PROCESSOR_CLS = None
 
-    # TODO: Is there are elegant way to distinct action class params from
+    # TODO: Is there an elegant way to distinct action class params from
     # processor class params?
-    def __init__(self, sig=None, processor_cls=None, permissions=None,
-                 runtime_data=None, lock_mode=None):
+    def __init__(self, sig=None, processor_cls=None, permissions=None, lock_mode=None):
         self._sig = sig
         self._processor_cls = processor_cls or self.PROCESSOR_CLS or ASYNC_ACTIONS_PROCESSOR_CLS
-        self._runtime_data = runtime_data or dict()
         self._lock_mode = lock_mode
         self._name = get_task_name(sig)
         self.short_description = get_task_verbose_name(sig)
@@ -31,13 +29,7 @@ class BaseTaskAction:
     def __name__(self):
         return self._name
 
-    def _get_runtime_data(self):
-        """
-        _summary_
-        """
-        return self._runtime_data
-
-    def run(self, modeladmin, request, queryset):
+    def run(self, modeladmin, request, queryset, runtime_data=None):
         """
         _summary_
 
@@ -45,7 +37,6 @@ class BaseTaskAction:
         :param _type_ request: _description_
         :param _type_ queryset: _description_
         """
-        runtime_data = self._get_runtime_data()
         processor = self._processor_cls(queryset, self._sig, runtime_data, self._lock_mode)
         processor.run()
 
@@ -60,16 +51,19 @@ class BaseTaskAction:
         :param _type_ request: _description_
         :param _type_ queryset: _description_
         """
-        self.run(modeladmin, request, queryset)
+        return self.run(modeladmin, request, queryset)
 
 
 class FormTaskActionMixin:
     """
     _summary_
     """
-
-    #: List of forms.
+    #: List of form classes.
     forms = list()
+
+    def __init__(self, *args, forms=None, **kwargs):
+        self._forms = forms or []
+        super().__init__(*args, **kwargs)
 
     def _get_forms(self):
         """
@@ -77,14 +71,42 @@ class FormTaskActionMixin:
 
         :return _type_: _description_
         """
-        return self.forms
+        return self.forms + self._forms
 
-    def _get_runtime_data(self):
+    def run(self, modeladmin, request, queryset, runtime_data=None):
         """
         _summary_
+
+        :param _type_ modeladmin: _description_
+        :param _type_ request: _description_
+        :param _type_ queryset: _description_
+        :return _type_: _description_
         """
-        # TODO: Get runtime-data from forms.
-        return super()._get_runtime_data()
+        forms = []
+        for form_cls in self._get_forms():
+            if f'run_{self.__name__}' in request.POST:
+                form = form_cls(request.POST)
+            else:
+                form = form_cls()
+            forms.append(form)
+
+        if not forms:
+            return super().run(modeladmin, request, queryset)
+
+        elif all(form.is_valid() for form in forms):
+            runtime_data = {}
+            for form in forms:
+                runtime_data.update(form.cleaned_data)
+            return super().run(modeladmin, request, queryset, runtime_data)
+
+        else:
+            context = dict(
+                title=self.short_description,
+                objects=queryset.order_by('pk'),
+                forms=forms,
+                action=self.__name__,
+            )
+            return render(request, 'async_actions/async_action_form.html', context)
 
 
 class TaskAction(FormTaskActionMixin, BaseTaskAction):
@@ -103,7 +125,7 @@ def as_action(*args, **options):
     :param str verbose_name: _description_
     :param str description: _description_
     :param list permissions: _description_
-    :param dict runtime_data: _description_
+    :param list forms: _description_
     :param const lock_mode: _description_
     """
     def create_action_from_task(**options):
