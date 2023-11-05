@@ -19,6 +19,8 @@ from django.test import RequestFactory
 from testapp.models import TestModel
 from testapp.tasks import test_task
 from testapp.tasks import test_chain
+from testapp.tasks import test_group
+from testapp.tasks import test_chord
 from testapp.utils import create_test_data
 from testapp.forms import SomeRuntimeData
 from testapp.forms import MoreRuntimeData
@@ -252,11 +254,11 @@ class AsyncActionsTests(TestCase):
         signature = test_task.si()
         processor = Processor(queryset, signature)
         workflow = processor.workflow
-        self.assertIsInstance(workflow, group)
-        self.assertEqual(type(processor.signatures[0]), Signature)
         task_states = ActionTaskState.objects.all()
-        self.assertEqual(set(task_states), set([t for t in processor.task_states]))
-        self.assertEqual(set(t.task_id for t in task_states), set(s.id for s in processor.signatures))
+        self.assertIsInstance(workflow, workflow.TYPES['group'])
+        self.assertEqual(type(processor.signatures[0]), Signature)
+        self.assertEqual(set(task_states), {t for t in processor.task_states})
+        self.assertEqual({t.task_id for t in task_states}, {s.id for s in processor.signatures})
 
         # Just for the coverage...
         with patch.object(processor.workflow, 'delay'):
@@ -269,32 +271,75 @@ class AsyncActionsTests(TestCase):
         signature = test_task.si()
         processor = Processor(queryset, signature, lock_mode=Processor.OUTER_LOCK)
         workflow = processor.workflow
-        self.assertIsInstance(workflow, signature.TYPES['group'])
-        self.assertIsInstance(processor.signatures[0], signature.TYPES['chain'])
+        sig = processor.signatures[0]
         task_states = ActionTaskState.objects.all()
-        self.assertEqual(set(task_states), set([t for t in processor.task_states]))
+        self.assertIsInstance(workflow, signature.TYPES['group'])
+        self.assertIsInstance(sig, signature.TYPES['chain'])
+        self.assertEqual(sig.tasks[0].type, get_locks)
+        self.assertEqual(sig.tasks[1].type, test_task)
+        self.assertEqual(sig.tasks[2].type, release_locks)
+        self.assertCountEqual(list(task_states), [t for t in processor.task_states])
 
-    def test_processor_with_chain(self):
+    def test_processor_with_chain_and_inner_lock(self):
         # Initialize a processor with a chain as signature.
         queryset = TestModel.objects.all()
         processor = Processor(queryset, test_chain, lock_mode=Processor.INNER_LOCK)
         workflow = processor.workflow
-        self.assertIsInstance(workflow, group)
-        self.assertEqual(type(processor.signatures[0]), _chain)
+        sig = processor.signatures[0]
         task_states = ActionTaskState.objects.all()
-        self.assertEqual(set(task_states), set([t for t in processor.task_states]))
-        self.assertEqual(set(t.task_id for t in task_states), set(t.id for s in processor.signatures for t in s.tasks))
+        self.assertIsInstance(workflow, workflow.TYPES['group'])
+        self.assertIsInstance(sig, sig.TYPES['chain'])
+        self.assertCountEqual([s.type for s in sig.tasks], [s.type for s in test_chain.tasks])
+        self.assertCountEqual(list(task_states), [t for t in processor.task_states])
+        self.assertCountEqual([t.task_id for t in task_states], [t.id for s in processor.signatures for t in s.tasks])
 
-    def test_processor_with_chain_and_outer_lock(self):
+    def test_processor_with_chain(self):
         # Initialize a processor with a chain as signature and Processor.OUTER_LOCK.
         queryset = TestModel.objects.all()
-        processor = Processor(queryset, test_chain, lock_mode=Processor.INNER_LOCK)
+        processor = Processor(queryset, test_chain)
         workflow = processor.workflow
-        self.assertIsInstance(workflow, group)
-        self.assertEqual(type(processor.signatures[0]), _chain)
+        sig = processor.signatures[0]
         task_states = ActionTaskState.objects.all()
-        self.assertEqual(set(task_states), set([t for t in processor.task_states]))
-        self.assertEqual(set(t.task_id for t in task_states), set(t.id for s in processor.signatures for t in s.tasks))
+        self.assertIsInstance(workflow, workflow.TYPES['group'])
+        self.assertIsInstance(sig, sig.TYPES['chain'])
+        self.assertEqual(sig.tasks[0].type, get_locks)
+        self.assertEqual(sig.tasks[-1].type, release_locks)
+        self.assertCountEqual(list(task_states), processor.task_states)
+        self.assertCountEqual([s.type for s in sig.tasks[1:-1]], [s.type for s in test_chain.tasks])
+
+    def test_processor_with_group(self):
+        # Initialize a processor with a group.
+        queryset = TestModel.objects.all()
+        processor = Processor(queryset, test_group)
+        workflow = processor.workflow
+        sig = processor.signatures[0]
+        task_states = ActionTaskState.objects.all()
+        self.assertIsInstance(workflow, workflow.TYPES['group'])
+        self.assertIsInstance(sig, sig.TYPES['chain'])
+        self.assertEqual(sig.tasks[0].type, get_locks)
+        self.assertIsInstance(sig.tasks[1], sig.TYPES['chord'])
+        self.assertEqual(sig.tasks[1].body.type, release_locks)
+        self.assertIsInstance(sig.tasks[1].tasks, sig.TYPES['group'])
+        self.assertCountEqual([s.type for s in sig.tasks[1].tasks.tasks], [s.type for s in test_group.tasks])
+        self.assertCountEqual(list(task_states), processor.task_states)
+
+    def test_processor_with_chord(self):
+        # Initialize a processor with a chord.
+        queryset = TestModel.objects.all()
+        processor = Processor(queryset, test_chord)
+        workflow = processor.workflow
+        sig = processor.signatures[0]
+        task_states = ActionTaskState.objects.all()
+        self.assertIsInstance(workflow, workflow.TYPES['group'])
+        self.assertIsInstance(sig, sig.TYPES['chain'])
+        self.assertEqual(sig.tasks[0].type, get_locks)
+        self.assertIsInstance(sig.tasks[1], sig.TYPES['chord'])
+        self.assertIsInstance(sig.tasks[1].body, sig.TYPES['chain'])
+        self.assertEqual(sig.tasks[1].body.tasks[0].type, test_chord.body.type)
+        self.assertEqual(sig.tasks[1].body.tasks[1].type, release_locks)
+        self.assertIsInstance(sig.tasks[1].tasks, sig.TYPES['group'])
+        self.assertCountEqual([s.type for s in sig.tasks[1].tasks.tasks], [s.type for s in test_chord.tasks])
+        self.assertCountEqual(list(task_states), processor.task_states)
 
     def test_action_task(self):
         task_state = self.create_task_state()
